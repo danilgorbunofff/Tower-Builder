@@ -1,0 +1,921 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light">
+<title>The $1 Tower — Brick by Brick</title>
+<meta name="description" content="One dollar, one brick. Every brick lands crooked on the tower and never comes off.">
+
+<!--
+DIRECTION CONTRACT — pixel brick tower, sky world
+
+THESIS  A hand-stacked brick tower standing in a wide pixel sky at noon. One dollar buys one
+brick; it lands slightly off-centre, studs up, and it never comes off. The tower is the only
+chart on the page — height is the readout, and the readout is a shape.
+
+OWN-WORLD  A four-pixel grid rules everything: snapped offsets, no fractional geometry, no blur,
+no radius, no gradients except hard-banded dither. Sky is banded blue with checkerboard seams,
+a strip-cut pixel sun, drifting cloud slabs. Bricks are studded toy blocks in a fixed toy palette,
+lit from above with one lighter top face and a hard shade line. Type is Press Start 2P and
+Silkscreen — arcade faces only. One yellow plate button does all the work.
+
+STORY  I press the yellow button. A brick lands with a thunk, the tower jumps, and my name goes
+on the brick that just landed. There is no undo, because the tower is the point.
+
+FORM  Sky, grass line, brick tower centred on the grass, sign board top-left, one button in the
+dark tray at the bottom. The camera pans up in whole bricks; the base sinks off the grass and
+the tower keeps growing past the frame.
+-->
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+
+<style>
+/* ─────────────────────────────  tokens  ───────────────────────────── */
+:root{
+  /* the grid: nothing lands off it */
+  --u: 4px;
+
+  /* sky bands, top to bottom */
+  --sky-1: #2a86dd;
+  --sky-2: #3f9ae8;
+  --sky-3: #5ab3f2;
+  --sky-4: #84cbf8;
+  --sky-5: #b3e2fb;
+  --sky-6: #dcf3ff;
+  --sky-7: #f2fbff;
+
+  /* ground */
+  --grass:    #5fae35;
+  --grass-hi: #8ede5c;
+  --grass-lo: #37691c;
+
+  /* tray + ink */
+  --tray:    #241d33;
+  --tray-2:  #171126;
+  --tray-3:  #0e0a18;
+  --edge:    #2f2743;
+
+  --white:   #ffffff;
+  --text:    #e9e3f4;
+  --muted:   #9c8fb0;
+
+  /* the one control */
+  --gold:     #ffc22e;
+  --gold-hi:  #ffe071;
+  --gold-lo:  #cc8a00;
+  --gold-deep:#8a5a00;
+
+  --good:     #7fd14f;
+
+  /* geometry — step MUST equal front face + top face height */
+  --face: 24px;
+  --top:   8px;
+  --step: 32px;
+  --bw:   132px;
+
+  /* how much sky the crown keeps above it */
+  --crown-gap: 196px;
+
+  --pan:  0px;   /* set by JS */
+  --drop: 0px;   /* set by JS */
+}
+
+*,*::before,*::after{ box-sizing:border-box; margin:0; padding:0; }
+
+html,body{ margin:0; padding:0; }
+
+html{
+  height:100%;
+  overflow:hidden;
+  background:var(--sky-1);
+}
+
+body{
+  height:100%;
+  overflow:hidden;
+  font-family:'Silkscreen','Courier New',monospace;
+  color:var(--text);
+  background:transparent;
+  -webkit-font-smoothing:none;
+  font-smooth:never;
+  image-rendering:pixelated;
+  text-rendering:geometricPrecision;
+}
+
+img,svg{ image-rendering:pixelated; }
+
+button{ font:inherit; color:inherit; }
+
+/* no focus ring on mouse, loud ring on keyboard */
+:focus{ outline:none; }
+:focus-visible{ outline:var(--u) solid var(--white); outline-offset:var(--u); }
+
+.sr{
+  position:absolute; top:0; left:0;
+  width:1px; height:1px;
+  margin:0; padding:0; border:0;
+  clip:rect(0 0 0 0); clip-path:inset(50%);
+  overflow:hidden; white-space:nowrap;
+}
+
+.px{ font-family:'Press Start 2P','Courier New',monospace; letter-spacing:0; }
+
+/* ─────────────────────────────  layout  ───────────────────────────── */
+#stage{
+  position:fixed; inset:0;
+  display:flex; flex-direction:column;
+  overflow:hidden;
+}
+
+/* ─────────────────────────────  sky  ───────────────────────────── */
+.sky{
+  position:relative;
+  flex:1 1 auto;
+  min-height:0;
+  overflow:hidden;
+  background:var(--sky-1);
+}
+.sky svg{
+  position:absolute; inset:0;
+  width:100%; height:100%;
+  display:block;
+  shape-rendering:crispEdges;
+}
+
+.clouds-a{ animation:drift 150s steps(180) infinite; }
+.clouds-b{ animation:drift 260s steps(180) infinite; }
+
+@keyframes drift{
+  from{ transform:translateX(0); }
+  to  { transform:translateX(-360px); }
+}
+
+/* ─────────────────────────────  tower  ───────────────────────────── */
+.camera{
+  position:absolute; left:0; right:0; bottom:0; top:0;
+  pointer-events:none;
+}
+.tower{
+  position:absolute;
+  left:50%;
+  bottom:0;
+  width:0;
+  transform:translateY(calc(-1 * var(--pan)));
+}
+
+.stack{
+  position:absolute;
+  left:0; bottom:0;
+  width:0;
+  margin:0; padding:0;
+  list-style:none;
+}
+
+.blk{
+  position:absolute;
+  left:calc(var(--x) - var(--w) / 2);
+  bottom:calc(var(--i) * var(--step));
+  width:var(--w);
+  height:var(--face);
+  background:var(--c);
+  /* bevel + seam, all hard pixels */
+  box-shadow:
+    inset 0 -4px 0 rgba(0,0,0,.26),
+    inset  4px 0 0 rgba(255,255,255,.20),
+    inset -4px 0 0 rgba(0,0,0,.16),
+    inset 0  4px 0 rgba(255,255,255,.10);
+}
+
+/* the top face sits one face-height above, on the same grid line */
+.blk::before{
+  content:"";
+  position:absolute;
+  left:0; right:0;
+  bottom:100%;
+  height:var(--top);
+  background:var(--c-top);
+  box-shadow: inset 0 -3px 0 rgba(0,0,0,.22);
+}
+
+/* studs */
+.studs{
+  position:absolute;
+  left:0; right:0; bottom:100%;
+  height:var(--top);
+  display:flex;
+  justify-content:space-evenly;
+  align-items:flex-end;
+  padding:0 6px;
+}
+.studs i{
+  display:block;
+  width:12px; height:var(--top);
+  background:var(--c-hi);
+  box-shadow:
+    inset  3px 0 0 rgba(255,255,255,.45),
+    inset -3px 0 0 rgba(0,0,0,.20),
+    inset 0 -3px 0 rgba(0,0,0,.28);
+}
+
+/* name tag on the brick that just landed */
+.tag{
+  position:absolute;
+  left:50%;
+  bottom:calc(100% + var(--top) + 6px);
+  transform:translateX(-50%);
+  white-space:nowrap;
+  font-family:'Press Start 2P','Courier New',monospace;
+  font-size:8px;
+  line-height:1;
+  padding:6px 8px;
+  background:var(--tray-2);
+  color:var(--white);
+  box-shadow:0 0 0 3px var(--tray-3), 0 3px 0 3px rgba(0,0,0,.28);
+  opacity:0;
+  transition:opacity 200ms steps(3,end);
+}
+.blk.is-new .tag{ opacity:1; }
+
+/* the landing: four visible frames, then still */
+.blk.is-new{
+  animation:drop 200ms steps(4,end) 1;
+}
+@keyframes drop{
+  from{ translate:0 -24px; }
+  to  { translate:0 0; }
+}
+.blk.is-new::after{
+  content:"";
+  position:absolute;
+  top:calc(-1 * var(--top));
+  right:0; bottom:0; left:0;
+  background:var(--white);
+  animation:flash 240ms steps(3,end) 1 forwards;
+}
+@keyframes flash{
+  0%  { opacity:.55; }
+  100%{ opacity:0; }
+}
+
+/* the whole tower jumps one pixel-grid notch on a land */
+.tower.bump{ animation:bump 140ms steps(3,end) 1; }
+@keyframes bump{
+  0%  { translate:0 0; }
+  40% { translate:0 6px; }
+  100%{ translate:0 0; }
+}
+
+/* ─────────────────────────────  sign  ───────────────────────────── */
+.sign{
+  position:absolute;
+  top:20px; left:20px;
+  z-index:3;
+  background:var(--tray-2);
+  box-shadow:
+    0 0 0 4px var(--tray-3),
+    0 0 0 8px var(--tray),
+    0 8px 0 8px rgba(0,0,0,.30),
+    inset 0 4px 0 rgba(255,255,255,.09);
+  padding:16px 18px 14px;
+  min-width:246px;
+}
+.sign-k{
+  font-size:8px;
+  color:var(--muted);
+  letter-spacing:1px;
+  margin:0 0 8px;
+}
+.sign-n{
+  font-family:'Press Start 2P','Courier New',monospace;
+  font-size:32px;
+  line-height:1;
+  color:var(--gold);
+  margin:0 0 10px;
+  font-variant-numeric:tabular-nums;
+}
+.sign-n span{ font-size:16px; color:var(--muted); }
+.sign-row{
+  display:flex; align-items:baseline; gap:8px;
+  font-size:8px;
+  color:var(--muted);
+  border-top:4px solid var(--edge);
+  padding-top:9px;
+  margin-top:2px;
+}
+.sign-row b{
+  font-family:'Press Start 2P','Courier New',monospace;
+  font-weight:400;
+  color:var(--good);
+  font-size:9px;
+}
+.sign-last{
+  display:block;
+  margin-top:8px;
+  font-size:8px;
+  color:var(--white);
+  max-width:230px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.sign-last b{ color:var(--gold); font-weight:700; }
+
+/* ─────────────────────────────  tray + button  ───────────────────────────── */
+.tray{
+  position:relative;
+  flex:0 0 auto;
+  height:calc(96px + env(safe-area-inset-bottom, 0px));
+  padding-bottom:env(safe-area-inset-bottom, 0px);
+  background:var(--tray-2);
+  box-shadow:
+    inset 0 4px 0 var(--edge),
+    inset 0 8px 0 rgba(255,255,255,.05);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+}
+
+.order{
+  position:relative;
+  width:min(640px, calc(100vw - 48px));
+  height:68px;
+  border:0;
+  padding:0;
+  cursor:pointer;
+  background:var(--gold);
+  color:var(--tray-3);
+  box-shadow:
+    inset  4px 0 0 var(--gold-hi),
+    inset -4px 0 0 var(--gold-lo),
+    inset 0  4px 0 var(--gold-hi),
+    inset 0 -8px 0 var(--gold-lo),
+    0 0 0 4px var(--tray-3),
+    0 8px 0 4px var(--gold-deep),
+    0 12px 0 4px rgba(0,0,0,.35);
+  transition:translate 70ms steps(2,end), box-shadow 70ms steps(2,end);
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+}
+.order:hover{ background:var(--gold-hi); }
+.order:active,
+.order.is-down{
+  translate:0 8px;
+  box-shadow:
+    inset  4px 0 0 var(--gold-hi),
+    inset -4px 0 0 var(--gold-lo),
+    inset 0  4px 0 var(--gold-hi),
+    inset 0 -8px 0 var(--gold-lo),
+    0 0 0 4px var(--tray-3),
+    0 0 0 4px var(--gold-deep),
+    0 4px 0 4px rgba(0,0,0,.35);
+}
+.order.is-work .order-label{ opacity:.55; }
+
+.order-label{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  font-family:'Press Start 2P','Courier New',monospace;
+  font-size:20px;
+  line-height:1;
+  transition:opacity 60ms steps(2,end);
+}
+.order-label em{
+  font-style:normal;
+  font-size:14px;
+  background:var(--tray-3);
+  color:var(--gold-hi);
+  padding:7px 8px 6px;
+  box-shadow: inset 0 -4px 0 rgba(0,0,0,.5);
+}
+.order-hint{
+  font-family:'Press Start 2P','Courier New',monospace;
+  font-size:9px;
+  color:var(--muted);
+  text-align:center;
+  line-height:1.4;
+  max-width:calc(100vw - 40px);
+}
+.order-hint b{ color:var(--good); font-weight:400; }
+
+/* aria-live only — never painted */
+#live{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); }
+
+/* ─────────────────────────────  media  ───────────────────────────── */
+@media (max-width:1180px){
+  :root{ --bw:118px; }
+  .sign{ transform:scale(.92); transform-origin:top left; }
+}
+
+@media (max-width:900px){
+  :root{ --bw:106px; }
+  .tag{ font-size:7px; padding:5px 6px; }
+}
+
+@media (max-width:520px){
+  :root{ --bw:92px; --face:20px; --top:8px; --step:28px; }
+  .studs i{ width:10px; }
+  .sign{ top:12px; left:12px; padding:12px 13px 10px; min-width:0; transform:scale(.86); }
+  .sign-n{ font-size:26px; }
+  .sign-last{ max-width:168px; }
+  .tray{ height:calc(112px + env(safe-area-inset-bottom, 0px)); gap:6px; }
+  .order{ width:calc(100vw - 32px); height:64px; }
+  .order-label{ font-size:16px; gap:10px; }
+  .order-label em{ font-size:12px; padding:6px 7px 5px; }
+  .order-hint{ font-size:8px; }
+}
+
+@media (max-height:660px){
+  .sign{ transform:scale(.8); transform-origin:top left; }
+  .tray{ height:calc(84px + env(safe-area-inset-bottom, 0px)); }
+  .order{ height:58px; }
+  .order-label{ font-size:16px; }
+}
+
+@media (forced-colors:active){
+  .blk,.studs i{ forced-color-adjust:none; }
+  .order{ border:3px solid ButtonText; }
+  .sign{ border:3px solid CanvasText; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .clouds-a,.clouds-b{ animation:none; }
+  .blk.is-new{ animation:none; }
+  .blk.is-new::after{ animation:none; }
+  .tower.bump{ animation:none; }
+  .blk.is-new .tag{ transition:none; }
+  .order{ transition:none; }
+}
+</style>
+</head>
+<body>
+
+<div id="stage">
+
+  <!-- ── sky + tower ── -->
+  <div class="sky">
+    <svg viewBox="0 0 360 216" preserveAspectRatio="xMidYMax slice" aria-hidden="true" focusable="false">
+      <defs>
+        <pattern id="d1" width="2" height="2" patternUnits="userSpaceOnUse">
+          <rect width="1" height="1" fill="#2a86dd"/><rect x="1" y="1" width="1" height="1" fill="#2a86dd"/>
+          <rect x="1" width="1" height="1" fill="#3f9ae8"/><rect y="1" width="1" height="1" fill="#3f9ae8"/>
+        </pattern>
+        <pattern id="d2" width="2" height="2" patternUnits="userSpaceOnUse">
+          <rect width="1" height="1" fill="#3f9ae8"/><rect x="1" y="1" width="1" height="1" fill="#3f9ae8"/>
+          <rect x="1" width="1" height="1" fill="#5ab3f2"/><rect y="1" width="1" height="1" fill="#5ab3f2"/>
+        </pattern>
+        <pattern id="d3" width="2" height="2" patternUnits="userSpaceOnUse">
+          <rect width="1" height="1" fill="#5ab3f2"/><rect x="1" y="1" width="1" height="1" fill="#5ab3f2"/>
+          <rect x="1" width="1" height="1" fill="#84cbf8"/><rect y="1" width="1" height="1" fill="#84cbf8"/>
+        </pattern>
+        <pattern id="d4" width="2" height="2" patternUnits="userSpaceOnUse">
+          <rect width="1" height="1" fill="#84cbf8"/><rect x="1" y="1" width="1" height="1" fill="#84cbf8"/>
+          <rect x="1" width="1" height="1" fill="#b3e2fb"/><rect y="1" width="1" height="1" fill="#b3e2fb"/>
+        </pattern>
+        <pattern id="d5" width="2" height="2" patternUnits="userSpaceOnUse">
+          <rect width="1" height="1" fill="#b3e2fb"/><rect x="1" y="1" width="1" height="1" fill="#b3e2fb"/>
+          <rect x="1" width="1" height="1" fill="#dcf3ff"/><rect y="1" width="1" height="1" fill="#dcf3ff"/>
+        </pattern>
+        <pattern id="d6" width="2" height="2" patternUnits="userSpaceOnUse">
+          <rect width="1" height="1" fill="#dcf3ff"/><rect x="1" y="1" width="1" height="1" fill="#dcf3ff"/>
+          <rect x="1" width="1" height="1" fill="#f2fbff"/><rect y="1" width="1" height="1" fill="#f2fbff"/>
+        </pattern>
+      </defs>
+
+      <!-- banded sky with dithered seams -->
+      <rect width="360" height="34"  fill="#2a86dd"/>
+      <rect y="30"  width="360" height="4" fill="url(#d1)"/>
+      <rect y="34"  width="360" height="28" fill="#3f9ae8"/>
+      <rect y="58"  width="360" height="4" fill="url(#d2)"/>
+      <rect y="62"  width="360" height="30" fill="#5ab3f2"/>
+      <rect y="92"  width="360" height="4" fill="url(#d3)"/>
+      <rect y="96"  width="360" height="30" fill="#84cbf8"/>
+      <rect y="126" width="360" height="4" fill="url(#d4)"/>
+      <rect y="130" width="360" height="28" fill="#b3e2fb"/>
+      <rect y="158" width="360" height="4" fill="url(#d5)"/>
+      <rect y="162" width="360" height="24" fill="#dcf3ff"/>
+      <rect y="186" width="360" height="4" fill="url(#d6)"/>
+      <rect y="190" width="360" height="26" fill="#f2fbff"/>
+
+      <!-- strip-cut sun, 2-unit rows -->
+      <g fill="#ffe14a">
+        <rect x="295" y="22" width="10" height="2"/>
+        <rect x="291" y="24" width="18" height="2"/>
+        <rect x="289" y="26" width="22" height="2"/>
+        <rect x="288" y="28" width="24" height="2"/>
+        <rect x="287" y="30" width="26" height="2"/>
+        <rect x="286" y="32" width="28" height="2"/>
+        <rect x="286" y="34" width="28" height="2"/>
+        <rect x="286" y="36" width="28" height="2"/>
+        <rect x="287" y="38" width="26" height="2"/>
+        <rect x="288" y="40" width="24" height="2"/>
+        <rect x="289" y="42" width="22" height="2"/>
+        <rect x="291" y="44" width="18" height="2"/>
+        <rect x="295" y="46" width="10" height="2"/>
+      </g>
+      <g fill="#fff6a8">
+        <rect x="294" y="30" width="12" height="2"/>
+        <rect x="292" y="32" width="16" height="2"/>
+        <rect x="292" y="34" width="16" height="2"/>
+        <rect x="292" y="36" width="16" height="2"/>
+        <rect x="294" y="38" width="12" height="2"/>
+      </g>
+
+      <!-- far cloud band -->
+      <g class="clouds-b" fill="#ffffff" opacity=".72">
+        <g>
+          <rect x="34" y="128" width="22" height="2"/>
+          <rect x="30" y="130" width="32" height="2"/>
+          <rect x="26" y="132" width="46" height="2"/>
+          <rect x="30" y="134" width="38" height="2" fill="#dbeeff"/>
+        </g>
+        <g>
+          <rect x="236" y="112" width="18" height="2"/>
+          <rect x="232" y="114" width="30" height="2"/>
+          <rect x="226" y="116" width="46" height="2"/>
+          <rect x="232" y="118" width="34" height="2" fill="#dbeeff"/>
+        </g>
+        <g>
+          <rect x="118" y="152" width="14" height="2"/>
+          <rect x="114" y="154" width="26" height="2"/>
+          <rect x="110" y="156" width="38" height="2"/>
+          <rect x="116" y="158" width="26" height="2" fill="#dbeeff"/>
+        </g>
+      </g>
+
+      <!-- near cloud band -->
+      <g class="clouds-a" fill="#ffffff">
+        <g>
+          <rect x="16" y="56" width="24" height="2"/>
+          <rect x="8"  y="58" width="48" height="2"/>
+          <rect x="4"  y="60" width="58" height="2"/>
+          <rect x="10" y="62" width="44" height="2" fill="#dbeeff"/>
+        </g>
+        <g>
+          <rect x="148" y="38" width="26" height="2"/>
+          <rect x="140" y="40" width="48" height="2"/>
+          <rect x="134" y="42" width="60" height="2"/>
+          <rect x="142" y="44" width="44" height="2" fill="#dbeeff"/>
+        </g>
+        <g>
+          <rect x="272" y="86" width="20" height="2"/>
+          <rect x="264" y="88" width="42" height="2"/>
+          <rect x="258" y="90" width="54" height="2"/>
+          <rect x="266" y="92" width="38" height="2" fill="#dbeeff"/>
+        </g>
+        <g>
+          <rect x="70" y="100" width="16" height="2"/>
+          <rect x="64" y="102" width="34" height="2"/>
+          <rect x="58" y="104" width="46" height="2"/>
+          <rect x="66" y="106" width="32" height="2" fill="#dbeeff"/>
+        </g>
+        <!-- two birds, three pixels each -->
+        <g fill="#3a3630" opacity=".5">
+          <rect x="196" y="72" width="2" height="1"/>
+          <rect x="198" y="73" width="2" height="1"/>
+          <rect x="200" y="72" width="2" height="1"/>
+          <rect x="212" y="80" width="1" height="1"/>
+          <rect x="213" y="81" width="2" height="1"/>
+          <rect x="215" y="80" width="1" height="1"/>
+        </g>
+      </g>
+
+      <!-- horizon hills, low and hazy -->
+      <g fill="#79bdae">
+        <rect x="0"   y="206" width="44" height="10"/>
+        <rect x="36"  y="202" width="38" height="14"/>
+        <rect x="70"  y="198" width="44" height="18"/>
+        <rect x="110" y="204" width="52" height="12"/>
+        <rect x="156" y="196" width="50" height="20"/>
+        <rect x="200" y="202" width="46" height="14"/>
+        <rect x="240" y="197" width="54" height="19"/>
+        <rect x="288" y="205" width="72" height="11"/>
+      </g>
+      <g fill="#4f9c83">
+        <rect x="0"   y="212" width="62" height="4"/>
+        <rect x="52"  y="209" width="58" height="7"/>
+        <rect x="104" y="213" width="72" height="3"/>
+        <rect x="172" y="210" width="64" height="6"/>
+        <rect x="232" y="213" width="60" height="3"/>
+        <rect x="288" y="209" width="72" height="7"/>
+      </g>
+
+      <!-- grass line -->
+      <g fill="#8ede5c">
+        <rect x="0" y="214" width="360" height="2"/>
+        <rect x="3" y="212" width="2" height="2"/><rect x="9" y="212" width="3" height="2"/>
+        <rect x="17" y="212" width="2" height="2"/><rect x="27" y="212" width="3" height="2"/>
+        <rect x="36" y="212" width="2" height="2"/><rect x="45" y="212" width="3" height="2"/>
+        <rect x="54" y="212" width="2" height="2"/><rect x="63" y="212" width="2" height="2"/>
+        <rect x="73" y="212" width="3" height="2"/><rect x="83" y="212" width="2" height="2"/>
+        <rect x="92" y="212" width="3" height="2"/><rect x="103" y="212" width="2" height="2"/>
+        <rect x="112" y="212" width="2" height="2"/><rect x="123" y="212" width="3" height="2"/>
+        <rect x="133" y="212" width="2" height="2"/><rect x="143" y="212" width="3" height="2"/>
+        <rect x="152" y="212" width="2" height="2"/><rect x="162" y="212" width="2" height="2"/>
+        <rect x="173" y="212" width="3" height="2"/><rect x="182" y="212" width="2" height="2"/>
+        <rect x="192" y="212" width="3" height="2"/><rect x="203" y="212" width="2" height="2"/>
+        <rect x="212" y="212" width="2" height="2"/><rect x="222" y="212" width="3" height="2"/>
+        <rect x="232" y="212" width="2" height="2"/><rect x="243" y="212" width="3" height="2"/>
+        <rect x="252" y="212" width="2" height="2"/><rect x="262" y="212" width="2" height="2"/>
+        <rect x="273" y="212" width="3" height="2"/><rect x="283" y="212" width="2" height="2"/>
+        <rect x="293" y="212" width="3" height="2"/><rect x="303" y="212" width="2" height="2"/>
+        <rect x="313" y="212" width="2" height="2"/><rect x="323" y="212" width="3" height="2"/>
+        <rect x="333" y="212" width="2" height="2"/><rect x="343" y="212" width="3" height="2"/>
+        <rect x="353" y="212" width="3" height="2"/>
+      </g>
+      <rect y="214" width="360" height="1" fill="#5fae35"/>
+      <rect y="215" width="360" height="1" fill="#4a8f28"/>
+    </svg>
+  </div>
+
+  <!-- ── the sign ── -->
+  <div class="sign">
+    <p class="sign-k">BRICKS IN THE TOWER</p>
+    <p class="sign-n" id="signN">0</p>
+    <div class="sign-row">
+      <span>TAKEN</span><b id="signCash">$0</b>
+    </div>
+    <span class="sign-last">LAST IN — <b id="signLast">—</b></span>
+  </div>
+
+  <!-- ── tower ── -->
+  <div class="camera" aria-hidden="false">
+    <div class="tower" id="tower">
+      <ol class="stack" id="stack" aria-hidden="true"></ol>
+    </div>
+  </div>
+
+  <!-- ── the one control ── -->
+  <div class="tray">
+    <button class="order" id="order" type="button">
+      <span class="order-label"><em>$1</em> ADD A BRICK</span>
+    </button>
+    <p class="order-hint" id="note">PAYMENTS ARE OFF — NOTHING IS CHARGED. <b>ONE BRICK PER PRESS.</b></p>
+  </div>
+
+  <p class="sr" id="live" aria-live="polite"></p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  var $ = function(id){ return document.getElementById(id); };
+
+  var stage    = $("stage");
+  var sky      = document.querySelector(".sky");
+  var tower    = $("tower");
+  var stack    = $("stack");
+  var btn      = $("order");
+  var note     = $("note");
+  var live     = $("live");
+  var signN    = $("signN");
+  var signCash = $("signCash");
+  var signLast = $("signLast");
+
+  var root = document.documentElement;
+
+  /* Only the newest VIS bricks stay in the DOM. Sub-pixel jitter on a stack this
+     tall would cost more than it buys, and the count keeps climbing past the cap. */
+  var RENDER_CAP = 52;
+
+  /* Vertical budget for the tower, in face-heights, measured from the grass up. */
+  var VIS_TOP = 196;
+
+  var blockEls = [];
+  var blockFor = {};   // order number -> element, for cheap "is newest" checks
+  var count = 0;
+  var busy = false;
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  /* toy palette — saturated, evenly spaced hues, all mid-to-high value so the
+     white bevel and the dark seam both read */
+  var BRICK = [
+    "#e2453c", /* red    */
+    "#f08a2c", /* orange */
+    "#ffc22e", /* gold   */
+    "#8dc63f", /* green  */
+    "#3aa676", /* teal   */
+    "#3a8fd6", /* blue   */
+    "#7a5bd6", /* violet */
+    "#d95ba0"  /* pink   */
+  ];
+
+  var SAMPLE = [
+    "nadia","kofi","miriam","yusuf","lena","tobias","aisha","pedro","hanna","omar",
+    "saoirse","dimitri","priya","jonas","mei","lucas","fatima","ivan","zoe","marek",
+    "ines","hugo","anika","sven","leila","marcos","tam","greta","ravi","noor"
+  ];
+
+  /* ── deterministic per-order geometry ─────────────────────────────────────
+     Same order number always lands the same way, so a shared link looks the
+     same for everyone and the stack survives a re-render. */
+  function hash(n){
+    var x = (n * 2654435761) >>> 0;
+    x ^= x >>> 13;
+    x = (x * 1274126177) >>> 0;
+    x ^= x >>> 16;
+    return x >>> 0;
+  }
+
+  function stepPx(){
+    return parseFloat(getComputedStyle(root).getPropertyValue("--step")) || 32;
+  }
+
+  function facePx(){
+    return parseFloat(getComputedStyle(root).getPropertyValue("--face")) || 24;
+  }
+
+  /* snap to the 4px grid — nothing in this world lands off it */
+  function snap(v){
+    var u = parseFloat(getComputedStyle(root).getPropertyValue("--u")) || 4;
+    return Math.round(v / u) * u;
+  }
+
+  function mix(hex, t){
+    var r = parseInt(hex.slice(1,3),16),
+        g = parseInt(hex.slice(3,5),16),
+        b = parseInt(hex.slice(5,7),16);
+    r = Math.round(r + (255 - r) * t);
+    g = Math.round(g + (255 - g) * t);
+    b = Math.round(b + (255 - b) * t);
+    return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+  }
+
+  function geom(no){
+    var h = hash(no);
+    var bw = parseFloat(getComputedStyle(root).getPropertyValue("--bw")) || 132;
+    /* every brick is laid by hand: a little too far left or right, a little
+       too wide or narrow, and no two the same */
+    var x = snap((((h >>> 3)  % 100) / 100 - 0.5) * 48);
+    var w = snap(bw * (0.82 + ((h >>> 11) % 100) / 100 * 0.40));
+    var c = BRICK[(h >>> 19) % BRICK.length];
+    return { x:x, w:w, c:c, studs: Math.max(2, Math.min(5, Math.round(w / 38))) };
+  }
+
+  function nameFor(no){
+    return SAMPLE[hash(no * 7 + 13) % SAMPLE.length];
+  }
+
+  function makeBlock(no){
+    var g = geom(no);
+    var li = document.createElement("li");
+    li.className = "blk";
+    li.dataset.no = String(no);
+    li.style.setProperty("--i", "0");
+    li.style.setProperty("--x", g.x + "px");
+    li.style.setProperty("--w", g.w + "px");
+    li.style.setProperty("--c", g.c);
+    li.style.setProperty("--c-top", mix(g.c, 0.26));
+    li.style.setProperty("--c-hi",  mix(g.c, 0.54));
+
+    var s = document.createElement("span");
+    s.className = "studs";
+    for(var i = 0; i < g.studs; i++){ s.appendChild(document.createElement("i")); }
+
+    var t = document.createElement("span");
+    t.className = "tag";
+    t.textContent = nameFor(no);
+
+    li.append(t, s);
+    li.__g = g;
+    return li;
+  }
+
+  /* a brick's number changes when the base scrolls out, so re-point --i and
+     the per-brick jitter together */
+  function relight(){
+    for(var i = 0; i < blockEls.length; i++){
+      var el = blockEls[i];
+      el.style.setProperty("--i", String(i));
+      el.classList.toggle("is-new", i === blockEls.length - 1);
+    }
+  }
+
+  function frame(){
+    /* Measure the stack instead of estimating it: each brick is taller than
+       --step once the top face is counted, and an estimate undershoots the
+       pan, which pushes the crown off the top of the viewport. */
+    var stackH = stack.getBoundingClientRect().height;
+    var skyH = sky.clientHeight || 1;
+    var vis = Math.max(0, skyH - VIS_TOP);
+    var pan = Math.max(0, stackH - vis);
+    root.style.setProperty("--pan", pan + "px");
+  }
+
+  function paint(){
+    signN.textContent = String(count);
+    signCash.textContent = "$" + count;
+    signLast.textContent = count ? nameFor(count) : "—";
+  }
+
+  function wobble(){
+    if(reduced.matches) return;
+    tower.classList.remove("bump");
+    void tower.offsetWidth;
+    tower.classList.add("bump");
+  }
+
+  /* ── the one thing that happens ───────────────────────────────────────── */
+  function order(){
+    count++;
+    var el = makeBlock(count);
+    blockEls.push(el);
+    stack.appendChild(el);
+    blockFor[count] = el;
+
+    relight();
+
+    if(blockEls.length > RENDER_CAP){
+      var dropped = blockEls.shift();
+      delete blockFor[dropped.dataset.no];
+      if(dropped.parentNode) dropped.parentNode.removeChild(dropped);
+      relight();
+      /* newest is still newest after the shift */
+      if(blockEls.length) blockEls[blockEls.length - 1].classList.add("is-new");
+    }
+
+    paint();
+    frame();
+    wobble();
+
+    live.textContent = "Brick " + count + " added, " + nameFor(count) + ". "
+      + "$" + count + " taken. Height " + count + ".";
+  }
+
+  /* ── press, and hold to keep laying ───────────────────────────────────── */
+  var holdDelay = null, holdTick = null, holdFired = false;
+
+  function press(){
+    if(busy) return;
+    busy = true;
+    btn.classList.add("is-work");
+    order();
+    window.setTimeout(function(){
+      busy = false;
+      btn.classList.remove("is-work");
+    }, 130);
+  }
+
+  function endHold(){
+    if(holdDelay){ window.clearTimeout(holdDelay); holdDelay = null; }
+    if(holdTick){ window.clearInterval(holdTick); holdTick = null; }
+    btn.classList.remove("is-down");
+  }
+
+  btn.addEventListener("click", function(e){
+    if(e.detail === 0){ press(); return; }   /* keyboard / assistive tech */
+  });
+
+  btn.addEventListener("pointerdown", function(){
+    holdFired = false;
+    btn.classList.add("is-down");
+    holdDelay = window.setTimeout(function(){
+      holdFired = true;
+      holdTick = window.setInterval(function(){
+        btn.classList.add("is-work");
+        order();
+      }, 230);
+    }, 400);
+  });
+
+  btn.addEventListener("pointerup", function(){
+    var wasHold = holdFired;
+    endHold();
+    if(!wasHold){ press(); }
+    holdFired = false;
+  });
+
+  window.addEventListener("pointercancel", endHold);
+  window.addEventListener("blur", endHold);
+
+  btn.addEventListener("keydown", function(e){
+    if(e.key === " " || e.key === "Enter"){ btn.classList.add("is-down"); }
+  });
+  btn.addEventListener("keyup", function(e){
+    if(e.key === " " || e.key === "Enter"){ btn.classList.remove("is-down"); }
+  });
+
+  window.addEventListener("resize", function(){ frame(); });
+
+  /* ── boot ─────────────────────────────────────────────────────────────── */
+  (function seed(){
+    var m = /[?&]n=(\d+)/.exec(location.search);
+    var n = m ? Math.min(parseInt(m[1], 10) || 0, 400) : 0;
+    for(var i = 0; i < n; i++){ order(); }
+    if(m){
+      note.textContent = "SAMPLE STACK. NOT REAL ORDERS — PAYMENTS ARE OFF.";
+    }
+    paint();
+    frame();
+    requestAnimationFrame(frame);
+  })();
+
+})();
+</script>
+</body>
+</html>

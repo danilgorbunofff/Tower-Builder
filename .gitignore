@@ -1,0 +1,7 @@
+# Local QA output: screenshots, throwaway Chrome profiles, probe logs.
+.impeccable/
+*.log
+
+# OS noise
+Thumbs.db
+.DS_Store
