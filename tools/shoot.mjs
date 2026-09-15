@@ -74,12 +74,20 @@ function reap(profile) {
   } catch { /* nothing to reap, or no powershell: the rmdir will say so */ }
 }
 
+const sleepSync = (ms) => Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+
 function freshProfile(profile) {
   for (let i = 0; ; i++) {
     try { rmSync(profile, { recursive: true, force: true }); return; }
     catch (e) {
-      if (i >= 4 || !['EPERM', 'EBUSY', 'ENOTEMPTY'].includes(e.code)) throw e;
+      if (i >= 13 || !['EPERM', 'EBUSY', 'ENOTEMPTY'].includes(e.code)) throw e;
       reap(profile);
+      /* Windows frees the profile's handles a moment after chrome dies, not
+         when it is killed: retrying instantly just re-fails against a browser
+         that is still deleting its own files. ~4s of grace in total, which is
+         far cheaper than a lost capture -- run-probes.mjs reuses one profile per
+         probe and viewport, so a throw here strands every later capture too. */
+      sleepSync(300);
     }
   }
 }
