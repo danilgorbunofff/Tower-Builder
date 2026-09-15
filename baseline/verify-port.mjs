@@ -56,7 +56,10 @@ const ADDED = [
   "/* Storeys the server has named, out of the `floors` table. A storey the server",
   "has never heard of is not missing: this is the demo, and SAMPLE names it. */",
   "var residents = new Map<number, string>();",
-  "",   /* the blank line that separates `residents` from the per-floor spec */
+  "",   /* the blank line that separates `residents` from the hoardings block */
+  "",   /* the blank line that separates the hoardings block from the per-floor spec */
+  "",   /* the blank line above `makeFloor`'s link block */
+  "",   /* the blank line below the link block, before `li.appendChild(tag)` */
   "var real = residents.get(no);",
   "if(real !== undefined){ return real; }",
   "/* The handle goes out before the sample tower is seeded, so a poller that",
@@ -69,7 +72,9 @@ const ADDED = [
 /* Deliberate additions that are too long to list line by line. `at` is text the
    block's first line contains; `lines` is how many lines it runs for. */
 const ADDED_BLOCKS = [
-  { at: "a tower other people are also building", lines: 77 },
+  { at: "a tower other people are also building", lines: 85 },
+  { at: "Where a storey's link lives", lines: 5 },
+  { at: "A floor's link, when it has one", lines: 19 },
 ];
 
 /* Longest alternative first: HTMLElement before Element, number[] before number. */

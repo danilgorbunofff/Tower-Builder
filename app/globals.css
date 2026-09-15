@@ -892,6 +892,39 @@ button{ font:inherit; color:inherit; }
    not cards. Editing them to quiet the linter would move geometry the probes
    assert on, so they stay. */
 
+/* --- the hoarding, when the newest floor carries an address -----------------
+   A floor can have a link, and the only hoarding anyone ever sees is the newest
+   one: `.floor.is-new .tag` is the sole rule that ever raises opacity, and
+   `is-new` stays on the top storey for good. So this is the one place on the
+   tower where something is clickable.
+
+   The anchor wraps the name the hoarding already drew -- it is not a second
+   word beside it -- so .tag's text is character for character what it was
+   before links existed. The probes read that text; a copy would have shown up.
+
+   Colour is inherited, never set: an unstyled anchor is blue, and a blue word
+   on the #241d33 plaque reads as a mistake rather than a link. Under the
+   inherited colour the name keeps the gold the verbatim rules gave it. */
+.tag a{
+   color:inherit;
+   cursor:pointer;
+   text-decoration:underline;
+   text-decoration-thickness:1px;
+   text-underline-offset:3px;
+}
+/* Hover and keyboard focus both invert the plaque instead of moving anything.
+   The tag clips its own overflow, so a focus ring drawn outside it would be cut
+   off; and the verbatim `.floor.is-new .tag b` rule outranks a bare
+   `.tag a:hover b`, which is why the name is named again at full length here. */
+.tag a:hover,
+.tag a:focus-visible,
+.floor.is-new .tag a:hover b,
+.floor.is-new .tag a:focus-visible b{
+   outline:0;
+   background:var(--white);
+   color:var(--tray-3);
+}
+
 /* --- vendored arcade faces -------------------------------------------------
    These three cuts used to arrive from fonts.googleapis.com, which this machine
    cannot reach. An unanswerable stylesheet is not a harmless failure here: it

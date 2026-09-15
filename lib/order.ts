@@ -65,12 +65,202 @@ function chars(s: string): number {
   return [...s].length;
 }
 
+/* ── the blocklist, and why the test is on a shape rather than a spelling ───
+   A name published here is permanent and public, so a small set of words never
+   becomes one. Matching them by spelling would be worthless: `n4z1`, `NÁZI`,
+   `n a z i` and `nazi nazi nazi` are the same word to every reader except a
+   string comparison, and the person typing it knows that better than the person
+   reading it.
+
+   So the name is folded into a shape first, in the order the tricks arrive:
+   take the accents off, lowercase, swap the digits and symbols that stand in for
+   letters, delete everything that is not a letter or a digit, then collapse runs
+   of the same character. The last step is what makes `nnaaazzziii` equal to
+   `nazi`; the step before it is what makes `n-a-z-i` equal to `nazi`; and the
+   two together are why the blocklist below is stored in ordinary spelling and
+   normalised at load rather than being written out pre-mangled.
+
+   Deleting separators is what makes `xXnaziXx` land on a shape containing
+   `nazi` -- which is the point -- and it is also why the match is a substring
+   test: once the hyphens are gone there are no words left to match against.
+   Substring matching has one famous cost, and SAFE is the receipt for it:
+   `Scunthorpe` contains a blocked word and is a town. SAFE spares whole tokens,
+   so the escape cannot be spent on the rest of the same name -- `scunthorpe`
+   passes and `scunthorpe <slur>` does not.
+
+   Terms are matched two ways, by length, and the reason is the collapsing step:
+   `coon` folds to `con`, which is a substring of `Connor`. A term that folds
+   below four characters is therefore too generic to be evidence of anything and
+   is matched only as a whole token, where `coon` still fails and `Connor` is
+   not its business. */
+const LEET: Record<string, string> = {
+  "0": "o", "1": "i", "3": "e", "4": "a", "5": "s",
+  "6": "g", "7": "t", "8": "b", "9": "g", "@": "a",
+  "$": "s", "!": "i", "|": "l",
+};
+const LEET_RE = /[0-9@$!|]/g;
+const NON_WORD = /[^a-z0-9]+/g;
+const RUNS = /(.)\1+/g;
+/* Marks left behind by decomposing a letter, so `Á` keeps its A and loses the
+   accent. */
+const MARKS = /[\u0300-\u036f]/g;
+/* Letters that do not decompose at all, so no normalisation form reaches them
+   and they have to be spelled out. Deliberately short: these are the ones that
+   turn up in names. */
+const SPECIAL: Record<string, string> = {
+  "ß": "ss", "æ": "ae", "œ": "oe", "ø": "o", "đ": "d", "ð": "d",
+  "þ": "th", "ł": "l", "ħ": "h", "ı": "i", "ŋ": "n", "ĸ": "k", "ſ": "s",
+};
+const SPECIAL_RE = /[ßæœøđðþłħıŋĸſ]/g;
+
+/* Words that are allowed to contain a blocked sequence, because they are words.
+   Each one is the receipt for a term on the list below: `cunt` is in Scunthorpe,
+   `spic` is in spice and spicule, `paki` is in Pakistan, `negro` is in negroni,
+   and `nigger` folds onto the same shape as Nigeria. Spared whole, so the escape
+   cannot be spent on the rest of the same name -- `spice` passes and
+   `spice <slur>` does not.
+
+   One deliberate omission, since it is the entry somebody will want to add: the
+   country `Niger` is NOT here. Run collapsing makes `nigger` and `Niger` the
+   same shape, so sparing the country spares the slur, and a slur that ships is
+   worse than a country name that is refused. Its people are spared a word
+   later, which is as close as this gets to both. */
+const SAFE = [
+  "scunthorpe", "spice", "spices", "spiced", "spicy",
+  "pakistan", "pakistani", "pakistanis",
+  "nigeria", "nigerian", "nigerians",
+  "spicule", "spicules", "auspicious", "negroni",
+];
+
+/* Letters only: accents taken off, case folded, and the letters that no
+   normalisation form can reach spelled out. Every other fold below starts here. */
+function lettersOf(raw: string): string {
+  return raw
+    .normalize("NFKD")
+    .replace(MARKS, "")
+    .toLowerCase()
+    .replace(SPECIAL_RE, (c) => SPECIAL[c]);
+}
+
+/* Letters, with the digits and symbols that stand in for them. */
+function fold(raw: string): string {
+  return lettersOf(raw).replace(LEET_RE, (c) => LEET[c]);
+}
+
+/* The order the tricks arrive in, as one string. */
+function shapeOf(raw: string): string {
+  return fold(raw).replace(NON_WORD, "").replace(RUNS, "$1");
+}
+
+/* The words a name is made of, for the half of the test that has to know where
+   one word ends. Digits and symbols separate here rather than substituting,
+   which is what makes `coon88` the word `coon` followed by a number instead of a
+   word that merely contains it. No run collapsing either: `kkk` and `K` fold
+   onto the same single letter once runs are collapsed, and only the uncollapsed
+   form tells them apart -- one is a hate symbol and the other is somebody's
+   initial. */
+function wordsOf(raw: string): string[] {
+  return lettersOf(raw).split(/[^a-z]+/).filter(Boolean);
+}
+
+/* A term folded as the word it is, so that the list and SAFE are compared
+   against the word somebody actually wrote. */
+function wholeOf(raw: string): string {
+  return lettersOf(raw).replace(/[^a-z]/g, "");
+}
+
+/* Written in ordinary spelling and folded once at load, so the list stays
+   readable and correctable. Deliberately short -- the words that will actually
+   turn up -- and adding to it is the whole maintenance story. Some entries are
+   here because the shape test catches more than the word does: `n4z1` only folds
+   onto `nazi` if `nazi` is on this list. */
+const BLOCKED_RAW = [
+  /* ethnic and racial */
+  "nazi", "hitler", "swastika", "white power", "white pride", "kkk",
+  "nigger", "nigga", "niglet", "coon", "darkie", "spic", "spick", "wetback",
+  "beaner", "chink", "gook", "slant", "raghead", "towelhead", "sandnigger",
+  "kike", "hymie", "paki", "jap", "gyp", "wop", "dago", "guido", "polack",
+  "gypsy", "redskin", "savage", "injun", "negro", "colored", "mulatto",
+  /* sexuality and gender */
+  "fag", "faggot", "fagot", "dyke", "tranny", "shemale", "homo",
+  /* disability */
+  "retard", "retarded", "mongoloid", "spaz", "spastic", "windowlicker",
+  /* sexual violence, and the abuse that goes with it */
+  "rape", "rapes", "raped", "raping", "rapist", "rapists", "molest",
+  "pedo", "pedophile", "paedo", "paedophile",
+  "cunt", "whore", "slut", "skank", "bimbo", "hooker",
+  /* the tower's own voice. PLACEHOLDER_NAME is the signal that a floor has been
+     taken down, and a name that can be bought for a dollar would let anyone
+     forge it -- either to dress their own storey up as a redaction or to make a
+     redaction look like theirs. */
+  PLACEHOLDER_NAME,
+  "the tower", "moderator",
+];
+
+const BLOCKED = [...new Set(BLOCKED_RAW.map(wholeOf))];
+/* The spared words, removed from the shape before it is tested. Longest first,
+   so a longer one is taken as a whole rather than leaving its own tail behind. */
+const SAFE_RE = new RegExp(
+  SAFE.map(shapeOf)
+    .sort((a, b) => b.length - a.length)
+    .join("|"),
+  "g"
+);
+/* Terms that are ordinary English words, or stems that live inside them, and so
+   are never matched as a substring. `rape` is in drape, scrape, trapeze and
+   parapet; `rapist` is in therapist and scraping; `homo` is in homophone and
+   homogeneous; `pedo` is in pedometer; `savage` and `slant` are words in their
+   own right. A bare one of these is still refused -- it simply cannot be caught
+   hiding inside a longer word, because the longer word is usually innocent and
+   refusing it is the worse mistake. */
+const WHOLE_ONLY = new Set([
+  "homo", "pedo", "rape", "rapes", "raped", "raping", "rapist", "rapists",
+  "slant", "savage", "savages",
+]);
+/* Long enough not to be a coincidence. Below this a term is only ever matched
+   whole; see the note above about `coon` and `Connor`. */
+const SUBSTRING_MIN = 4;
+
+/** The folded shape a name is judged on, exposed so a test can read it. */
+export function normaliseName(raw: string): string {
+  return shapeOf(raw);
+}
+
+/** The blocked term a name lands on, or null. The term is for the log and the
+    test, never for the person typing: repeating a slur back at someone to tell
+    them it is a slur is not a kindness, and the modal says so plainly instead. */
+export function blockedName(raw: string): string | null {
+  const shape = shapeOf(raw);
+  if (!shape) return null;
+
+  /* Escape first, then test, so a spared word cannot shield the rest of the name
+     it sits in. */
+  const spared = shape.replace(SAFE_RE, "");
+  const words = wordsOf(raw);
+
+  for (const term of BLOCKED) {
+    const collapsed = shapeOf(term);
+    /* The two ways a term can be evidence of intent. A long term caught anywhere
+       in the shape survives the `n-a-z-i` disguise; a short one only counts on
+       its own, where it cannot be an accident of a longer word. */
+    if (collapsed.length >= SUBSTRING_MIN && !WHOLE_ONLY.has(term)) {
+      if (spared.includes(collapsed)) return term;
+    } else if (words.includes(term)) {
+      return term;
+    }
+  }
+  return null;
+}
+
 export function readName(raw: unknown): { ok: true; name: string } | { ok: false; message: string } {
   if (typeof raw !== "string") return { ok: false, message: "a floor needs a name" };
   const name = cleanName(raw);
   if (!name) return { ok: false, message: "a floor needs a name" };
   if (chars(name) > NAME_MAX) {
     return { ok: false, message: `${NAME_MAX} characters at most` };
+  }
+  if (blockedName(name)) {
+    return { ok: false, message: "pick a different name" };
   }
   return { ok: true, name };
 }

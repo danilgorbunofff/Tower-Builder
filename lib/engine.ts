@@ -38,7 +38,7 @@ export type EngineOptions = {
 };
 
 /** A storey the server knows about: its number, and who the server says lives there. */
-export type RemoteFloor = { no: number; name: string; hidden?: boolean };
+export type RemoteFloor = { no: number; name: string; url?: string | null; hidden?: boolean };
 
 export type EngineHandle = {
   /** The tower now stands `n` storeys, and these are what the server knows of it. */
@@ -118,6 +118,12 @@ export function startEngine(opts: EngineOptions = {}) {
   /* Storeys the server has named, out of the `floors` table. A storey the server
      has never heard of is not missing: this is the demo, and SAMPLE names it. */
   var residents = new Map<number, string>();
+
+  /* Where a storey's link lives, when the server sent one. Kept out of `residents`
+     because a name is always drawn and a link is not: most floors have no link, and
+     not being in here is a better answer than an empty string a click would follow
+     nowhere. */
+  var hoardings = new Map<number, string>();
 
   /* ── pure, deterministic per-floor spec ──────────────────────────────────
      Floor 37 looks like floor 37 for everyone, forever: a shared link shows the
@@ -231,6 +237,27 @@ export function startEngine(opts: EngineOptions = {}) {
     who.textContent = nameFor(no);
     tag.appendChild(document.createTextNode("NEW "));
     tag.appendChild(who);
+
+    /* A floor's link, when it has one, belongs on the hoarding next to its name:
+       the newest storey wears a NEW tag that never comes off, so its resident is
+       the one person permanently on screen, and a link nobody can click is not a
+       link. The name moves into the anchor rather than being copied, so what the
+       hoarding says is the same text it said before this existed -- and a floor
+       with no link is left completely alone. */
+    var href = hoardings.get(no);
+    if(href){
+      var a = document.createElement("a");
+      a.textContent = who.textContent;
+      a.href = href;
+      /* ugc: this address was typed by somebody who bought a floor. `noopener` is
+         what stops the page it opens from reaching back through window.opener,
+         which a tab opened with target=_blank is otherwise handed. */
+      a.setAttribute("rel", "noopener noreferrer ugc");
+      a.setAttribute("target", "_blank");
+      who.textContent = "";
+      who.appendChild(a);
+    }
+
     li.appendChild(tag);
 
     return li;
@@ -1132,7 +1159,15 @@ export function startEngine(opts: EngineOptions = {}) {
     for(var i = 0; i < named.length; i++){
       /* §8 redacts by publishing nothing: a hidden floor keeps its height and
          loses its name, and these are the names that then never reach the DOM. */
-      if(!named[i].hidden){ residents.set(named[i].no, named[i].name); }
+      if(!named[i].hidden){
+        residents.set(named[i].no, named[i].name);
+        /* The link is registered under the same guard, and for the same reason:
+           a floor that has been taken down is not a floor whose name is hidden
+           and whose address is still on the hoarding. */
+        /* String() is here only because element access under a mutating index
+           is widened back to `string | null | undefined`; the value is a string. */
+        if(named[i].url){ hoardings.set(named[i].no, String(named[i].url)); }
+      }
     }
 
     /* A ?n= tower is a sample and the note over it says so. Real storeys are not

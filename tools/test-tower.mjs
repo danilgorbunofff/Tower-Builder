@@ -80,9 +80,9 @@ console.log("\n  one purchase of three");
   eq("the ledger agrees", await getTower(0), {
     count: 3,
     floors: [
-      { no: 1, name: "Ada", url: "https://example.com/ada", hidden: false },
-      { no: 2, name: "Ada", url: "https://example.com/ada", hidden: false },
-      { no: 3, name: "Ada", url: "https://example.com/ada", hidden: false },
+      { no: 1, name: "Ada", url: "https://example.com/ada" },
+      { no: 2, name: "Ada", url: "https://example.com/ada" },
+      { no: 3, name: "Ada", url: "https://example.com/ada" },
     ],
   });
 }

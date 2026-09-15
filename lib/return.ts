@@ -66,7 +66,7 @@ export function startReturn(engine: EngineHandle): void {
         const data = (await response.json()) as {
           paid?: boolean;
           count?: number;
-          floors?: { no: number; name: string; hidden?: boolean }[];
+          floors?: { no: number; name: string; url?: string | null }[];
         };
 
         if (data.paid && typeof data.count === "number") {
