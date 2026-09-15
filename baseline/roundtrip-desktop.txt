@@ -1,0 +1,94 @@
+﻿SETTLE desktop atRest=16694 waited=1000ms built=true running=0
+EVAL desktop {
+ "v": "roundtrip",
+ "max": 5641,
+ "legs": [
+  {
+   "label": "0.35",
+   "at": 1974,
+   "depth": 48,
+   "first": 21,
+   "last": 68,
+   "ascending": true,
+   "numbered": true,
+   "dropIsBase": true,
+   "maxGapPx": 0,
+   "maxDriftPx": 0,
+   "atCentre": 45,
+   "want": 45,
+   "inFrame": 18
+  },
+  {
+   "label": "0.9",
+   "at": 5077,
+   "depth": 48,
+   "first": 73,
+   "last": 120,
+   "ascending": true,
+   "numbered": true,
+   "dropIsBase": true,
+   "maxGapPx": 0,
+   "maxDriftPx": 0,
+   "atCentre": 105,
+   "want": 105,
+   "inFrame": 18
+  },
+  {
+   "label": "0.25",
+   "at": 1410,
+   "depth": 48,
+   "first": 11,
+   "last": 58,
+   "ascending": true,
+   "numbered": true,
+   "dropIsBase": true,
+   "maxGapPx": 0,
+   "maxDriftPx": 0,
+   "atCentre": 34,
+   "want": 34,
+   "inFrame": 18
+  },
+  {
+   "label": "1",
+   "at": 5641,
+   "depth": 48,
+   "first": 73,
+   "last": 120,
+   "ascending": true,
+   "numbered": true,
+   "dropIsBase": true,
+   "maxGapPx": 0,
+   "maxDriftPx": 0,
+   "atCentre": 115,
+   "want": 115,
+   "inFrame": 14
+  },
+  {
+   "label": "0.4",
+   "at": 2256,
+   "depth": 48,
+   "first": 27,
+   "last": 74,
+   "ascending": true,
+   "numbered": true,
+   "dropIsBase": true,
+   "maxGapPx": 0,
+   "maxDriftPx": 0,
+   "atCentre": 50,
+   "want": 50,
+   "inFrame": 18
+  }
+ ],
+ "bases": [
+  21,
+  73,
+  11,
+  73,
+  27
+ ],
+ "wentUpThenDown": true,
+ "failures": [],
+ "ok": true
+}
+EVAL-ERR null
+STAGES desktop launch=806 setup=892 load-timeout=6908 fonts-timeout=8423 settle=18416 probe=21072 done=21072

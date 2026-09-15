@@ -1,0 +1,25 @@
+﻿SETTLE mobile atRest=16470 waited=1000ms built=true running=0
+EVAL mobile {
+ "v": "fresh",
+ "scrollTop": 4769,
+ "scrollMax": 4769,
+ "atCeiling": true,
+ "pan": 4769,
+ "panU": 1399,
+ "fh0": 44,
+ "depth": 48,
+ "first": 73,
+ "last": 120,
+ "ascending": true,
+ "drop": 3168,
+ "dropIsBase": true,
+ "inFrame": 14,
+ "storeyAtCentre": 115,
+ "storeyTheModelWants": 115,
+ "towerVisible": true,
+ "diag": {
+  "fh": null
+ }
+}
+EVAL-ERR null
+STAGES mobile launch=886 setup=998 load-timeout=7026 fonts-timeout=8527 settle=18285 probe=18292 done=18293

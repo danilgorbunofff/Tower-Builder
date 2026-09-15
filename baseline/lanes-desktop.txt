@@ -1,0 +1,54 @@
+﻿SETTLE desktop atRest=16128 waited=1000ms built=true running=0
+EVAL desktop {
+ "far": {
+  "k": 4.08,
+  "w": 1440,
+  "h": 880.95,
+  "bandPx": 35,
+  "bandUnits": 353.07
+ },
+ "rails": {
+  "railMax": 5641,
+  "uMax": 1383.11,
+  "rMax": 3
+ },
+ "stars": 4215,
+ "seen": [
+  0
+ ],
+ "rows": [
+  {
+   "r": 1,
+   "b": 32.63,
+   "pad": [
+    565.02,
+    842.35,
+    248.79,
+    599.54
+   ],
+   "vis": 2
+  }
+ ],
+ "failing": [],
+ "failingCount": 0,
+ "multiple": [
+  {
+   "r": 1,
+   "idx": 0,
+   "vis": 2
+  }
+ ],
+ "bands": [],
+ "checks": {
+  "skyHasRoom": true,
+  "tenShapes": false,
+  "rungsToCheck": false,
+  "bodiesInWindow": true,
+  "oneWorldAtATime": false,
+  "allTenSeen": false,
+  "skyNeverBlank": true
+ },
+ "pass": false
+}
+EVAL-ERR null
+STAGES desktop launch=1088 setup=1143 load-timeout=7167 fonts-timeout=8675 settle=18079 probe=18171 done=18171

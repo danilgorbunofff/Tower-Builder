@@ -1,0 +1,4 @@
+﻿SETTLE desktop atRest=14089 waited=1000ms built=true running=0
+EVAL desktop "{\"vw\":1440,\"vh\":1000,\"sign\":[20,20,250,133],\"roof\":[610,120,220,56],\"gapPx\":340,\"fit\":\"calc((50% - 220px / 2 - 24px) / 1)\",\"s\":\"1\",\"bw\":\"220px\"}"
+EVAL-ERR null
+STAGES desktop launch=827 setup=928 load-timeout=6965 fonts-timeout=8476 settle=15876 probe=15878 done=15878

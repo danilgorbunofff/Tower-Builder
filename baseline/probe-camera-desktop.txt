@@ -1,0 +1,120 @@
+﻿SETTLE desktop atRest=16503 waited=1000ms built=true running=0
+EVAL desktop {
+ "vars": {
+  "n": "120",
+  "fh": "52px",
+  "pan": "5641px",
+  "drop": "3744px",
+  "crownGap": "120px",
+  "vh": 1000,
+  "vw": 1440
+ },
+ "sky": {
+  "top": 0,
+  "bottom": 881,
+  "h": 881,
+  "left": 0,
+  "w": 1440
+ },
+ "tray": {
+  "top": 881,
+  "bottom": 1000,
+  "h": 119,
+  "left": 0,
+  "w": 1440
+ },
+ "stack": {
+  "top": 2672,
+  "bottom": 2672,
+  "h": 0,
+  "left": 610,
+  "w": 220
+ },
+ "roof": {
+  "top": 120,
+  "bottom": 176,
+  "h": 56,
+  "left": 610,
+  "w": 220
+ },
+ "pave": {
+  "top": 6381,
+  "bottom": 6477,
+  "h": 96,
+  "left": 0,
+  "w": 1440
+ },
+ "tower": {
+  "top": 6416,
+  "bottom": 6416,
+  "h": 0,
+  "left": 610,
+  "w": 220
+ },
+ "lastFloor": {
+  "top": 176,
+  "bottom": 228,
+  "h": 52,
+  "left": 610,
+  "w": 220
+ },
+ "btn": {
+  "top": 891,
+  "bottom": 959,
+  "h": 68,
+  "left": 400,
+  "w": 640
+ },
+ "floorsOnScreen": 48,
+ "cameraTransform": "matrix(1, 0, 0, 1, 0, 5641)",
+ "cameraTranslateY": 5641,
+ "towerTransform": "none",
+ "camera": {
+  "roofInFrame": true,
+  "crownGapPx": 120,
+  "stackTopVsSkyTop": 2672,
+  "stackFitsSky": true,
+  "newestFloorTop": 176,
+  "stackBottomVsClipPx": 0,
+  "baseSitsOnClip": true
+ },
+ "ground": {
+  "stackBottomVsPaveBottom": -3805,
+  "stackBottomVsPaveTop": -3709,
+  "paveBottomVsSkyBottom": 5596,
+  "paveBottomAtRestVsSkyBottom": -45
+ },
+ "sign": {
+  "top": 20,
+  "bottom": 153,
+  "h": 133,
+  "left": 20,
+  "w": 250
+ },
+ "cameraBox": {
+  "top": 0,
+  "bottom": 6416,
+  "h": 6416,
+  "left": 0,
+  "w": 1440
+ },
+ "art": {
+  "scale": 4.078,
+  "sidewalkBandPx": 106,
+  "panPx": 5641,
+  "lidOpen": true,
+  "sidewalkTop": 6416,
+  "groundVsClipPx": 0
+ },
+ "towerOverflowPx": 0,
+ "stackOverflowPx": -3744,
+ "signOverRoof": false,
+ "signVsRoofPx": 33,
+ "docOverflow": {
+  "scrollH": 1000,
+  "innerH": 1000
+ },
+ "errs": []
+}
+EVAL-ERR null
+STAGES desktop launch=830 setup=919 load-timeout=6937 fonts-timeout=8439 settle=18256 probe=18263 done=18264

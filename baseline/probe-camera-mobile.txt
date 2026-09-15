@@ -1,0 +1,120 @@
+﻿SETTLE mobile atRest=18068 waited=1000ms built=true running=0
+EVAL mobile {
+ "vars": {
+  "n": "120",
+  "fh": "44px",
+  "pan": "4769px",
+  "drop": "3168px",
+  "crownGap": "80px",
+  "vh": 844,
+  "vw": 390
+ },
+ "sky": {
+  "top": 0,
+  "bottom": 736,
+  "h": 736,
+  "left": 0,
+  "w": 390
+ },
+ "tray": {
+  "top": 736,
+  "bottom": 844,
+  "h": 108,
+  "left": 0,
+  "w": 390
+ },
+ "stack": {
+  "top": 2248,
+  "bottom": 2248,
+  "h": 0,
+  "left": 113,
+  "w": 164
+ },
+ "roof": {
+  "top": 80,
+  "bottom": 136,
+  "h": 56,
+  "left": 113,
+  "w": 164
+ },
+ "pave": {
+  "top": 5419,
+  "bottom": 5467,
+  "h": 48,
+  "left": 0,
+  "w": 390
+ },
+ "tower": {
+  "top": 5416,
+  "bottom": 5416,
+  "h": 0,
+  "left": 113,
+  "w": 164
+ },
+ "lastFloor": {
+  "top": 136,
+  "bottom": 180,
+  "h": 44,
+  "left": 113,
+  "w": 164
+ },
+ "btn": {
+  "top": 744,
+  "bottom": 808,
+  "h": 64,
+  "left": 16,
+  "w": 358
+ },
+ "floorsOnScreen": 48,
+ "cameraTransform": "matrix(1, 0, 0, 1, 0, 4769)",
+ "cameraTranslateY": 4769,
+ "towerTransform": "none",
+ "camera": {
+  "roofInFrame": true,
+  "crownGapPx": 80,
+  "stackTopVsSkyTop": 2248,
+  "stackFitsSky": true,
+  "newestFloorTop": 136,
+  "stackBottomVsClipPx": 0,
+  "baseSitsOnClip": true
+ },
+ "ground": {
+  "stackBottomVsPaveBottom": -3219,
+  "stackBottomVsPaveTop": -3171,
+  "paveBottomVsSkyBottom": 4731,
+  "paveBottomAtRestVsSkyBottom": -38
+ },
+ "sign": {
+  "top": 12,
+  "bottom": 117,
+  "h": 105,
+  "left": 12,
+  "w": 89
+ },
+ "cameraBox": {
+  "top": 0,
+  "bottom": 5416,
+  "h": 5416,
+  "left": 0,
+  "w": 390
+ },
+ "art": {
+  "scale": 3.409,
+  "sidewalkBandPx": 89,
+  "panPx": 4769,
+  "lidOpen": true,
+  "sidewalkTop": 5417,
+  "groundVsClipPx": 1
+ },
+ "towerOverflowPx": 0,
+ "stackOverflowPx": -3168,
+ "signOverRoof": false,
+ "signVsRoofPx": 37,
+ "docOverflow": {
+  "scrollH": 844,
+  "innerH": 844
+ },
+ "errs": []
+}
+EVAL-ERR null
+STAGES mobile launch=1205 setup=1236 load-timeout=7278 fonts-timeout=8796 settle=20125 probe=20131 done=20131

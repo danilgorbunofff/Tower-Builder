@@ -1,0 +1,275 @@
+﻿SETTLE desktop atRest=52906 waited=1000ms built=true running=0
+EVAL desktop {
+ "far": {
+  "viewBox": "0 0 360 216",
+  "k": 4.08,
+  "w": 1440,
+  "h": 881
+ },
+ "rails": {
+  "railMax": 20201,
+  "fh0": 52,
+  "uMax": 4953,
+  "driftMax": 247.65
+ },
+ "field": {
+  "n": 4215,
+  "minY": -4600,
+  "maxY": 216,
+  "rows": 2409,
+  "emptyRows": 0,
+  "widths": {
+   "1": 2265,
+   "2": 1751,
+   "6": 199
+  }
+ },
+ "dust": {
+  "patterns": 76,
+  "deepFlat": 15,
+  "deepPatterned": 40,
+  "maxPatH": 4,
+  "darkOk": true,
+  "worst": "",
+  "fills": {
+   "#02040c": 1,
+   "#03060f": 1,
+   "#040713": 1,
+   "#040712": 1,
+   "#050a18": 3,
+   "#070c1b": 3,
+   "#040812": 1,
+   "#02040a": 1,
+   "#010309": 1,
+   "#010208": 1,
+   "#010106": 1
+  }
+ },
+ "ladder": {
+  "rungs": 78,
+  "want": 78,
+  "widest": 20,
+  "feet": [
+   8,
+   12,
+   12,
+   18,
+   20,
+   12,
+   20,
+   14,
+   19,
+   12,
+   8,
+   12,
+   12,
+   18,
+   20,
+   12,
+   20,
+   14,
+   19,
+   12,
+   8,
+   12,
+   12,
+   18,
+   20,
+   12,
+   20,
+   14,
+   19,
+   12,
+   8,
+   12,
+   12,
+   18,
+   20,
+   12,
+   20,
+   14,
+   19,
+   12,
+   8,
+   12,
+   12,
+   18,
+   20,
+   12,
+   20,
+   14,
+   19,
+   12,
+   8,
+   12,
+   12,
+   18,
+   20,
+   12,
+   20,
+   14,
+   19,
+   12,
+   8,
+   12,
+   12,
+   18,
+   20,
+   12,
+   20,
+   14,
+   19,
+   12,
+   8,
+   12,
+   12,
+   18,
+   20,
+   12,
+   20,
+   14
+  ],
+  "firstRungY": 64,
+  "lastRungY": -4556
+ },
+ "creep": [
+  0.05,
+  0.05,
+  0.05,
+  0.05,
+  0.05,
+  0.05
+ ],
+ "sweep": [
+  [
+   0,
+   171,
+   2,
+   0
+  ],
+  [
+   495,
+   173,
+   2,
+   0
+  ],
+  [
+   991,
+   177,
+   2,
+   0
+  ],
+  [
+   1486,
+   176,
+   3,
+   0.875
+  ],
+  [
+   1981,
+   178,
+   3,
+   1
+  ],
+  [
+   2477,
+   179,
+   4,
+   1
+  ],
+  [
+   2972,
+   181,
+   4,
+   1
+  ],
+  [
+   3467,
+   185,
+   4,
+   1
+  ],
+  [
+   3963,
+   178,
+   4,
+   1
+  ],
+  [
+   4458,
+   176,
+   3,
+   1
+  ],
+  [
+   4953,
+   180,
+   4,
+   1
+  ]
+ ],
+ "seen": {
+  "0": {
+   "first": 0,
+   "last": 3096
+  },
+  "1": {
+   "first": 0,
+   "last": 4334
+  },
+  "2": {
+   "first": 1114,
+   "last": 4953
+  },
+  "3": {
+   "first": 2229,
+   "last": 4953
+  },
+  "4": {
+   "first": 3467,
+   "last": 4953
+  },
+  "5": {
+   "first": 4705,
+   "last": 4953
+  }
+ },
+ "paint": {
+  "modelErr": 0,
+  "realStars": 180,
+  "n": 4215
+ },
+ "orbit": {
+  "animation": "lev-orbit",
+  "moved": true,
+  "r0": 7,
+  "r1": 7.81
+ },
+ "checks": {
+  "layerIsOneFrame": true,
+  "fieldIsWritten": true,
+  "fieldIsDeeper": true,
+  "fieldOnTheGrid": true,
+  "skyNeverThins": true,
+  "skyIsLevel": true,
+  "modelIsPaint": true,
+  "noDustInSpace": true,
+  "spaceIsBlack": true,
+  "ladderIsCounted": true,
+  "ladderGapsHeld": true,
+  "noWorldIsBig": true,
+  "skyIsNotCrowded": true,
+  "rungsInOrder": true,
+  "farRailIsOneRate": true,
+  "noWorldRail": true,
+  "worldsFade": true,
+  "worldsBehindMoon": true,
+  "creepIsTwentieth": true,
+  "orbitRuns": true,
+  "orbitMoves": true,
+  "orbitStaysNear": true
+ },
+ "failing": []
+}
+EVAL-ERR null
+STAGES desktop launch=829 setup=899 load-timeout=6923 fonts-timeout=8439 settle=54632 probe=66427 done=66428
