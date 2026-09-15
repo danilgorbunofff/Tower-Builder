@@ -11,11 +11,17 @@ of people.
 
 ## What it is
 
-A single hand-written `index.html`. No build step, no framework, no bundler, no dependency graph —
-open the file and it runs. Every pixel of the tower, the sky and the interface is drawn in the
-document: the facade is a real elevation (header band, window row, sill, slab), the sky is a column
-of CSS-drawn bands, and each floor's residents, curtains, balconies and window lights are derived
-deterministically from its floor number alone.
+A Next.js page, a Postgres database and Stripe Checkout, wrapped around an engine that is still the
+one hand-written `index.html` it began as. `index.html` is kept, frozen, because it is the baseline
+every measurement here is taken against: `baseline/verify-port.mjs` proves `lib/engine.ts` is that
+file's script line for line, and `baseline/domdiff.mjs` holds `components/frame.tsx` to its DOM node
+for node. [`ARCHITECTURE.md`](ARCHITECTURE.md) explains why the tower is still imperative,
+hand-written DOM inside a React page — and why that is not something to tidy.
+
+Every pixel of the tower, the sky and the interface is drawn in the document: the facade is a real
+elevation (header band, window row, sill, slab), the sky is a column of CSS-drawn bands, and each
+floor's residents, curtains, balconies and window lights are derived deterministically from its
+floor number alone.
 
 - **One fixed price.** $1 per floor. No tiers, no bidding, no escalating minimum — the most anyone
   can beat you by is one dollar.
@@ -45,12 +51,22 @@ never brighter than a star.
 
 ## Run it
 
-There is nothing to install. Either open `index.html` directly, or serve the folder so the tooling
-can reach it:
+```sh
+npm install
+cp .env.example .env.local     # every variable in it is optional
+npm run dev
+# → http://127.0.0.1:3000/
+```
+
+With an empty `.env.local` the page is the demo it has always been: **nothing is charged**, and the
+button builds floors in the browser. To take money you need a database and a Stripe key — both, not
+either, because a card charged with nowhere to put the floor is worse than no card at all:
 
 ```sh
-python -m http.server 8080
-# → http://127.0.0.1:8080/
+docker run -d --name tower-builder-pg \
+  -e POSTGRES_PASSWORD=tower -e POSTGRES_USER=tower -e POSTGRES_DB=tower \
+  -p 55432:5432 -v tower-builder-pgdata:/var/lib/postgresql/data postgres:16
+npm run db:migrate
 ```
 
 Useful query parameters:
@@ -58,7 +74,11 @@ Useful query parameters:
 | Param | Effect |
 | --- | --- |
 | `?n=120` | Seed the tower with that many floors, so you can see it tall without buying anything |
+| `?paid=cs_…` | Where Stripe returns a buyer to; the page reconciles that payment itself |
 | `?v=70` | Cache buster for capturing |
+
+`index.html` can still be served on its own (`python -m http.server 8080`) and it still works — it
+is the original, and the app is measured against it, not the other way round.
 
 ## The tooling
 
@@ -67,7 +87,7 @@ harness that drives the page, waits for it to settle, screenshots it, and then e
 script inside it. They are why the art in this repo can be checked by number instead of by eye.
 
 ```sh
-node tools/shoot.mjs --url 'http://127.0.0.1:8080/?n=120' --prefix shot --only desktop \
+node tools/shoot.mjs --url 'http://127.0.0.1:3000/?n=120' --prefix shot --only desktop \
   --eval-file tools/probe-px2.js
 ```
 
@@ -93,13 +113,23 @@ differ across the whole frame. Only ever measure within one frame.
 
 ## Status
 
-A working prototype with **payments switched off**. The reference flow assumes Stripe Checkout; no
-provider is wired up, and nothing here takes money. Also undecided: whether a buyer may edit or
-remove their own floor, and the moderation rules for names and links.
+Working end to end, and unbuilt: nobody has bought a floor yet, so the tower is empty. Payments are
+wired to Stripe Checkout — cards only — and switched off unless the deployment supplies both a
+database and a key; without them it is the demo, and the demo is a supported state rather than a
+broken one. Moderation is decided and in the code: a name is judged where it is typed and again
+where it is stored, and a floor that has to be taken down keeps its number and its height and loses
+only its words. That exception is the single bend in the permanence promise, and it is written down
+in [`ARCHITECTURE.md`](ARCHITECTURE.md) §6 rather than left to be discovered.
+
+Also still open: who carries the tax on a $1 cross-border sale, and whether a buyer may later edit
+or remove their own floor.
+
+`ARCHITECTURE.md` is the short read for anyone about to change the code: the page's two halves, the
+demo-mode switch, the one transaction that grows the tower, and the traps that look like something
+else.
 
 `OVERVIEW.md` is the long read: the pitch end to end, the business and the money, and how the app is
-actually built — the five systems, the laws of the world, and a map of where each one lives in
-`index.html`.
+actually built — the five systems, the laws of the world, and where each one lives.
 
 `PRODUCT.md` is the product truth — users, positioning, confirmed capabilities, and the things that
 are deliberately still open. Read it before adding a feature; it is the document that says what this

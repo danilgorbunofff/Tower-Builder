@@ -23,9 +23,14 @@ A public tower where every floor was bought for exactly $1. Pay $1 and a floor i
 the stack; everything below stays where it is and the newest floor is the one that just arrived.
 **One payment can buy several floors** — the buyer holds the button to charge up an order and one
 charge builds them all. Each floor has its own windows, curtain, balcony and residents, derived
-deterministically from its floor number — so the tower is one counter, not a table of rows.
+deterministically from its floor number — so a floor's *art* is a function of its number rather than
+a stored drawing. Only the two things a buyer chooses, the name and the link, are stored. Storeys are
+rendered from a moving window of about four dozen around the camera, so a thousand-floor tower is not
+a thousand rows on screen.
 **The tower never falls.** Every floor ever bought stays **forever**, so the page accumulates into a
-monument instead of decaying.
+monument instead of decaying. The one exception is a floor whose words break the rules: its name or
+link comes down and **its height does not move** — the storey keeps its number, keeps its place in
+the stack, and keeps counting toward how tall the tower is.
 
 Success: the tower keeps growing, people return to see how tall it has become, and the next floor is
 always one dollar away.
@@ -40,7 +45,9 @@ beside escalate to hundreds or thousands of dollars and turn into a wallet conte
 to. Nobody can outspend you meaningfully — the maximum anyone can beat you by is one dollar.
 
 The second half of the claim is **permanence**: nothing is ever deleted, expired, or rotated out.
-$1 buys a permanent line in a growing public record, not a fleeting ad slot.
+$1 buys a permanent line in a growing public record, not a fleeting ad slot. A floor can be
+**redacted** — words removed, floor kept — and that is the only thing that ever changes about a
+floor that has landed.
 
 ## Operating Context
 
@@ -60,8 +67,14 @@ Confirmed:
   (one floor per tick, capped) and one release is one charge for N floors. Adding a floor never adds a
   screen, a cart, a stepper, or a second control.
 - Buying **adds a floor on top of the tower**; everything below keeps its place.
-- Floors are **permanent** — never expire, never deleted, never rotated out.
-- A floor shows a **name plus one link**.
+- Floors are **permanent** — never expire, never deleted, never rotated out. If a floor's name or
+  link has to come down, the redaction removes the words and nothing else: the number, the place in
+  the stack and the count all stay.
+- A floor shows a **name plus one link**. The name is checked as it is typed and checked again
+  before the floor is built; a link must be `http` or `https`, with nothing before the host.
+- **Payments run through Stripe Checkout, cards only** — no account, no embedded form, no second
+  provider. With no keys configured the page is a demo that charges nothing, and that state is
+  supported rather than broken: the control still builds floors, in the browser, for free.
 - The tower stays **readable as height**: the newest floor is the draw and the top of the stack.
 - **Growth is visible.** A purchase moves the building: the new storey lands in the sky at once and
   the view then eases back down one storey. A storey is always the same storey — the floor height is
@@ -99,16 +112,24 @@ Confirmed:
 
 Undecided — future work must not invent these:
 
-- Payment provider (the reference flow assumes Stripe Checkout; the prototype ships with payments off).
-- Whether a buyer can edit or remove their own floor later.
-- Moderation rules for offensive names or links.
+- Whether a buyer can edit, rename, or remove their own floor later.
 - Any free, sponsored, or seeded floors.
+
+Decided, and not to be reopened by accident:
+
+- **Payment provider: Stripe Checkout** (cards only), fulfilled by webhook and reconciled by the
+  buyer's return. Configured by `DATABASE_URL` and `STRIPE_SECRET_KEY`; absent either, the page is
+  the demo.
+- **Moderation: validate at entry, publish immediately, take down privately.** Names and links are
+  judged in the browser before the request and again on the server before the floor is built, and a
+  floor that gets through can be redacted out of band. Nothing is ever deleted to do it.
 
 ## Brand Commitments
 
-No existing name, logo, palette, or voice has been committed by the user.
-Working title: **The $1 Ladder**; the chosen visual direction, "Short-Order Pass", recasts the
-ladder as a stack of orders. The final name is not settled and may follow the built world.
+No existing name, logo, palette, or voice was committed by the user at the start.
+Working title: **The $1 Ladder**. The name has since settled, in the repo, the page and these docs,
+as **The $1 Floor** — and the visual direction, "Short-Order Pass", is what recast the ladder as a
+stack of orders. The built world followed the name rather than the other way round.
 
 ## Evidence on Hand
 
@@ -120,7 +141,9 @@ No testimonials, customer logos, rung counts, press mentions, or traffic numbers
 1. **One price, one action.** Any added choice taxes a purchase that should take five seconds. Buying
    ten floors is still one action and one charge.
 2. **The page is the product.** No dashboard, no settings, no onboarding, no accounts.
-3. **Permanence is the value.** $1 buys a line that never disappears — protect that above all.
+3. **Permanence is the value.** $1 buys a line that never disappears — protect that above all. The
+   only permitted change to a landed floor is that its words can be taken down; anything that would
+   move, renumber, hide, or delete the *storey* is out of bounds.
 4. **Growth is the proof.** An empty tower looks broken; a tall one looks alive. Every block stays visible, and height must land at a glance even at thousands of blocks.
 5. **Losing is cheap.** Being pushed down costs a dollar, not a fortune. Keep the tone playful, never adversarial.
 
