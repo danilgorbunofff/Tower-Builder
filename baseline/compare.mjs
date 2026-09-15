@@ -59,21 +59,25 @@ const ENV = {
     "scene.top": { rel: 1e-5 },
   },
   /* `back.*T` are parallax transforms read as `matrix(1, 0, 0, 1, 0, <px>)`,
-     i.e. STRINGS, so the numeric rule above can never reach them. The capture
-     scrolls and immediately samples a rAF-driven transform, and the engine has
-     two frames it can be caught between: re-running the ORIGINAL against its own
-     baseline moves all four by up to 0.29% (5539.72 -> 5555.52, 67.9135 ->
-     68.1079). 5e-3 covers that with room, and the port's own values sit within
-     0.003% of the original's — two orders tighter than the noise. The string
-     skeleton must still match exactly, so this can only ever excuse the numbers
-     inside one transform, never a change of transform. */
+     i.e. STRINGS, so the numeric rule above can never reach them. probe-scroll
+     assigns scrollTop, sleeps 60ms, and samples a rAF-driven transform that is
+     still travelling (`beatCarriedScene` asserts it is: it wants slideT to
+     differ from the settled reading). So the value is a race with the page's own
+     paint, and it lands on one of a few quantised frames rather than on a
+     measurement. Sampling the ORIGINAL page five times, re-measured, gives
+     5522.17 / 5539.62 / 5555.51 desktop and 4692.23 / 4705.69 / 4717.42 mobile --
+     a 0.60% spread, identical quanta in both environments, with the port drawing
+     from the same three. 8e-3 clears that jitter; it is still well under the
+     1.3-1.8% gap to the settled transform, so a scene that stopped animating is
+     caught. The string skeleton must match exactly, so this can only ever excuse
+     the numbers inside one transform, never a change of transform. */
   "probe-scroll-desktop.txt": {
-    "back.camT": { rel: 5e-3 }, "back.slideT": { rel: 5e-3 },
-    "back.farT": { rel: 5e-3 }, "back.pavT": { rel: 5e-3 },
+    "back.camT": { rel: 8e-3 }, "back.slideT": { rel: 8e-3 },
+    "back.farT": { rel: 8e-3 }, "back.pavT": { rel: 8e-3 },
   },
   "probe-scroll-mobile.txt": {
-    "back.camT": { rel: 5e-3 }, "back.slideT": { rel: 5e-3 },
-    "back.farT": { rel: 5e-3 }, "back.pavT": { rel: 5e-3 },
+    "back.camT": { rel: 8e-3 }, "back.slideT": { rel: 8e-3 },
+    "back.farT": { rel: 8e-3 }, "back.pavT": { rel: 8e-3 },
   },
   /* probe-space restarts a CSS animation and samples it mid-flight — it reports
      `"moved": true` about itself, so a moving value is the point. The original

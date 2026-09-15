@@ -12,7 +12,7 @@
     node shoot.mjs --url <url> --prefix <p> --full           # capture full page
     node shoot.mjs --url <url> --prefix <p> --only desktop
 */
-import { spawn } from 'node:child_process';
+import { spawn, execFileSync } from 'node:child_process';
 import { mkdirSync, rmSync, existsSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -52,8 +52,40 @@ const VIEWPORTS = {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+/* Chrome re-executes itself on launch, so the process spawn() hands back is
+   often only a launcher: it exits the moment the real browser starts, child.pid
+   goes stale, and child.kill() below kills nothing. The real browser survives as
+   an orphan holding the profile directory locked. rmSync then throws EPERM, the
+   capture dies, and because run-probes.mjs reuses one profile per probe and
+   viewport, every later capture of that same probe is stranded too. So when the
+   delete fails, kill whatever chrome is still pointing at this profile. */
+function reap(profile) {
+  const esc = profile.replace(/'/g, "''");
+  try {
+    execFileSync('powershell', [
+      '-NoProfile', '-NonInteractive', '-Command',
+      /* every string here is single-quoted: node escapes windows argv with
+         backslashes, which powershell does not unescape, so a double quote in
+         the command silently arrives mangled and kills nothing */
+      `Get-CimInstance Win32_Process -Filter 'Name=''chrome.exe''' | `
+      + `Where-Object { $_.CommandLine -like '*${esc}*' } | `
+      + `ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }`,
+    ], { stdio: 'ignore' });
+  } catch { /* nothing to reap, or no powershell: the rmdir will say so */ }
+}
+
+function freshProfile(profile) {
+  for (let i = 0; ; i++) {
+    try { rmSync(profile, { recursive: true, force: true }); return; }
+    catch (e) {
+      if (i >= 4 || !['EPERM', 'EBUSY', 'ENOTEMPTY'].includes(e.code)) throw e;
+      reap(profile);
+    }
+  }
+}
+
 function launch(profile) {
-  rmSync(profile, { recursive: true, force: true });
+  freshProfile(profile);
   mkdirSync(profile, { recursive: true });
   const p = spawn(CHROME, [
     '--headless=new',
@@ -278,7 +310,12 @@ async function shoot(vp) {
   } catch (e) {
     console.log(`FAIL ${vp.padEnd(7)} ${e.message}`);
   } finally {
+    /* exitCode is set when the process we spawned was a launcher that already
+       exited -- the real browser is out there on its own and child.kill() below
+       cannot reach it, so reap by profile instead. */
+    const launcherGone = child.exitCode !== null;
     try { child.kill('SIGKILL'); } catch {}
+    if (launcherGone) reap(profile);
   }
 }
 
