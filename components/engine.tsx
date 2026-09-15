@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { startEngine, type EngineOptions } from "@/lib/engine";
+import { startFeed } from "@/lib/feed";
 
 /* The one line of React between the page and the tower.
 
@@ -13,10 +14,13 @@ import { startEngine, type EngineOptions } from "@/lib/engine";
 
    Starting twice is harmless. The engine stamps #stage and refuses a second
    boot, which is what keeps React's development-only StrictMode mount/unmount/
-   mount from building two towers and charging twice per tap. */
+   mount from building two towers and charging twice per tap.
+
+   The poller is handed the engine's handle rather than reaching for the DOM, so
+   there is exactly one thing in the page that knows how a tower grows. */
 export function Engine({ onPurchase }: EngineOptions = {}) {
   useEffect(() => {
-    startEngine({ onPurchase });
+    startEngine({ onPurchase, onReady: startFeed });
     /* boot once and keep the handler it was given: the engine owns the document
        from here on, and an onPurchase whose identity changed would want to be a
        fresh boot, not a second listener on the same buttons */

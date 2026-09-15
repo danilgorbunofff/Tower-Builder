@@ -9,6 +9,12 @@
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",
+    /* Server modules import each other with an explicit .ts extension. Next and
+       webpack resolve that happily, and so does plain node — which is what lets
+       tools/*.mjs import lib/tower.ts and test the shipped SQL instead of a copy
+       of it. Node's own type stripping requires the extension; TypeScript
+       requires this flag to allow it, and noEmit is already on. */
+    "allowImportingTsExtensions": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "jsx": "react-jsx",

@@ -1,0 +1,4 @@
+{
+  "//": "Scopes ESM to this directory so node can run lib/*.ts directly (tools/test-tower.mjs imports them). Without it node warns MODULE_TYPELESS_PACKAGE_JSON and reparses every file. Nothing here is .js, so this changes nothing for Next or webpack.",
+  "type": "module"
+}

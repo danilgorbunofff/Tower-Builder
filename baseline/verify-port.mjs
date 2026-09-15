@@ -14,8 +14,16 @@
                                        re-indent -- which is also a failure, since
                                        the port is meant to stay readable against
                                        index.html, line for line
-     port[j] is in ADDED               an intentional insertion
+     port[j] is in ADDED               an intentional insertion, one line
+     port[j] opens a declared BLOCK    an intentional insertion, several lines
      anything else                     a transcription bug, exit 1
+
+   A block is declared by the text its first line contains and by how many lines
+   it runs. The count is the whole proof of its extent: skip one line too few or
+   too many and the walk is looking at two different lines, which it reports as
+   an ordinary mismatch and exits 1. A long section of new work is recorded as
+   one block rather than eighty line entries, because the eighty entries said no
+   more than the block does.
 
    Greedy, not an LCS, because every line of the two bodies is meant to be in the
    same order and nothing is allowed to be missing. A stray deletion desynchronises
@@ -45,6 +53,23 @@ const ADDED = [
   "if(opts.onPurchase){ opts.onPurchase(n); return; }",
   "/* Phase 5 sends the order to the server instead; see demo mode at the top. */",
   "if(opts.onPurchase){ opts.onPurchase(1); return; }",
+  "/* Storeys the server has named, out of the `floors` table. A storey the server",
+  "has never heard of is not missing: this is the demo, and SAMPLE names it. */",
+  "var residents = new Map<number, string>();",
+  "",   /* the blank line that separates `residents` from the per-floor spec */
+  "var real = residents.get(no);",
+  "if(real !== undefined){ return real; }",
+  "/* The handle goes out before the sample tower is seeded, so a poller that",
+  "answers on the same tick still lands on a booted engine. */",
+  "engineHandle = { applyTower: applyTower };",
+  "if(opts.onReady){ opts.onReady(engineHandle); }",
+  "",   /* the blank line that closes the block below, before the batch section */
+];
+
+/* Deliberate additions that are too long to list line by line. `at` is text the
+   block's first line contains; `lines` is how many lines it runs for. */
+const ADDED_BLOCKS = [
+  { at: "a tower other people are also building", lines: 77 },
 ];
 
 /* Longest alternative first: HTMLElement before Element, number[] before number. */
@@ -115,9 +140,18 @@ if (port[port.length - 1].trim() !== "})();") {
 
 const isAdded = (line) => ADDED.includes(line.trim());
 
+/* The block whose first line this could be, or null. Anchored on a `/*` so a
+   block can never be opened by a line of code that happens to quote it. */
+const blockAt = (line) => {
+  const t = line.trim();
+  if (!t.startsWith("/*")) return null;
+  return ADDED_BLOCKS.find((b) => t.includes(b.at)) || null;
+};
+
 const annotated = [];
 const reindented = [];
 const added = [];
+const blocked = [];
 const unmatched = [];
 const spilled = [];
 
@@ -139,15 +173,31 @@ while (i < orig.length && j < port.length) {
     j++;
     continue;
   }
+  const block = blockAt(port[j]);
+  if (block && j + block.lines <= port.length) {
+    blocked.push({ at: block.at, lines: block.lines, line: j });
+    j += block.lines;
+    continue;
+  }
   unmatched.push({ i, j, a: orig[i], b: port[j] });
   i++; j++;
 }
 
 while (i < orig.length) { spilled.push(`dropped   ${ORIG}:${BODY_FROM + i}  ${orig[i].trim()}`); i++; }
 while (j < port.length) {
+  const block = blockAt(port[j]);
   if (isAdded(port[j])) added.push({ line: j, text: port[j].trim() });
+  else if (block && j + block.lines <= port.length) {
+    blocked.push({ at: block.at, lines: block.lines, line: j });
+    j += block.lines;
+    continue;
+  }
   else spilled.push(`extra     ${PORT}:${start + j + 1}  ${port[j].trim()}`);
   j++;
+}
+
+for (const b of blocked) {
+  console.log(`${PORT}:${start + b.line + 1}  block of ${b.lines} line(s)  ${b.at}\n`);
 }
 
 console.log("");
@@ -160,12 +210,24 @@ for (const u of unmatched) {
 for (const s of spilled) console.log(s + "\n");
 
 const missing = ADDED.filter((t) => !added.some((a) => a.text === t));
+const missingBlocks = ADDED_BLOCKS.filter((b) => !blocked.some((x) => x.at === b.at));
+const blockLines = blocked.reduce((n, b) => n + b.lines, 0);
+
+/* A declared block stands on its own: blank line above, blank line below. That
+   is what makes `lines` checkable -- an extent one line too long lands on the
+   line after the block's closing brace, and one too short lands on the brace
+   itself. Neither is blank. */
+const looseEnds = blocked.filter(
+  (b) => (b.line > 0 && port[b.line - 1].trim() !== "") ||
+         (b.line + b.lines < port.length && port[b.line + b.lines].trim() !== "")
+);
 
 console.log(`${ORIG} ${BODY_FROM}-${BODY_TO} (${orig.length} lines)  ->  ${PORT}:${start + 1}-${end + 1} (${port.length} lines)`);
 console.log(`identical  ${orig.length - annotated.length - reindented.length - unmatched.length}/${orig.length} lines`);
 console.log(`annotated  ${annotated.length} line(s) differ only by type annotations`);
 console.log(`re-indent  ${reindented.length} line(s) moved sideways`);
 console.log(`added      ${added.length} line(s) with no counterpart`);
+console.log(`blocks     ${blocked.length} block(s), ${blockLines} line(s) with no counterpart`);
 
 let bad = 0;
 if (reindented.length) { console.log(`MISMATCH ${reindented.length} line(s) were re-indented`); bad++; }
@@ -173,11 +235,28 @@ if (unmatched.length) { console.log(`MISMATCH ${unmatched.length} line(s) differ
 if (spilled.length) { console.log(`MISMATCH the two bodies are not the same length`); bad++; }
 if (added.length !== ADDED.length) {
   console.log(`MISMATCH ${ADDED.length} additions were declared but ${added.length} were found`);
+  const tally = new Map();
+  for (const a of added) tally.set(a.text, (tally.get(a.text) || 0) + 1);
+  for (const t of ADDED) tally.set(t, (tally.get(t) || 0) - 1);
+  for (const [text, n] of tally) {
+    if (n) console.log(`  ${n > 0 ? "extra" : "missing"} ${Math.abs(n)}x  ${JSON.stringify(text)}`);
+  }
+  const at = added.map((a) => `${PORT}:${start + a.line + 1}`).join(", ");
+  console.log(`  added on lines ${at}`);
   bad++;
 }
 if (missing.length) {
   console.log(`MISMATCH ${missing.length} declared addition(s) never appear:`);
   for (const m of missing) console.log("  " + m);
+  bad++;
+}
+if (blocked.length !== ADDED_BLOCKS.length || missingBlocks.length) {
+  console.log(`MISMATCH ${ADDED_BLOCKS.length} block(s) were declared but ${blocked.length} were found`);
+  bad++;
+}
+if (looseEnds.length) {
+  console.log(`MISMATCH ${looseEnds.length} block(s) do not sit between blank lines, so their extent is wrong`);
+  for (const b of looseEnds) console.log(`  ${PORT}:${start + b.line + 1}  declared ${b.lines} line(s)`);
   bad++;
 }
 if (bad) process.exit(1);

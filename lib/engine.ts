@@ -27,12 +27,33 @@
    The annotations are annotations alone -- strict mode wants them and nothing
    reads them at run time. The probe suite is what proves that claim, and
    baseline/verify-port.mjs is what checks that they are the only thing that
-   changed. */
+   changed. eslint.config.mjs turns off no-var (and the two unused-* warnings)
+   for this file alone, for exactly that reason. */
 
 export type EngineOptions = {
   /** Where a committed order goes. Omit it and the engine builds the floors itself. */
   onPurchase?: (floors: number) => void;
+  /** The engine's handle, handed over once, immediately before it seeds. */
+  onReady?: (engine: EngineHandle) => void;
 };
+
+/** A storey the server knows about: its number, and who the server says lives there. */
+export type RemoteFloor = { no: number; name: string; hidden?: boolean };
+
+export type EngineHandle = {
+  /** The tower now stands `n` storeys, and these are what the server knows of it. */
+  applyTower(n: number, named: RemoteFloor[]): void;
+};
+
+/* The engine outlives React's development-only StrictMode mount/unmount/mount
+   cycle, so its handle has to outlive it too. The second boot refuses to build a
+   second tower; this is what it hands back instead, so the second mount's poller
+   still drives the one engine that exists.
+
+   Not named `live`: the body declares `var live = $("live")`, the live region,
+   and a module-scoped binding of that name is a landmine -- the body's own
+   assignment would land on the element and quietly stop announcing floors. */
+let engineHandle: EngineHandle | null = null;
 
 /* Two shapes the original left implicit: what a world reaches, and the band of
    sky that a window is actually showing. */
@@ -45,7 +66,7 @@ export function startEngine(opts: EngineOptions = {}) {
      twice: two skies, two star fields, and two click handlers on #order, so every
      tap would buy two floors. The second boot is a no-op. */
   var host = document.getElementById("stage");
-  if(host && host.dataset.engine === "1"){ return; }
+  if(host && host.dataset.engine === "1"){ if(engineHandle && opts.onReady){ opts.onReady(engineHandle); } return; }
   if(host){ host.dataset.engine = "1"; }
   "use strict";
 
@@ -94,6 +115,10 @@ export function startEngine(opts: EngineOptions = {}) {
   var count  = 0;
   var busy   = false;
 
+  /* Storeys the server has named, out of the `floors` table. A storey the server
+     has never heard of is not missing: this is the demo, and SAMPLE names it. */
+  var residents = new Map<number, string>();
+
   /* ── pure, deterministic per-floor spec ──────────────────────────────────
      Floor 37 looks like floor 37 for everyone, forever: a shared link shows the
      same building, and a reload never shuffles anyone's curtains. */
@@ -136,6 +161,8 @@ export function startEngine(opts: EngineOptions = {}) {
   }
 
   function nameFor(no: number){
+    var real = residents.get(no);
+    if(real !== undefined){ return real; }
     return SAMPLE[hash(no * 7 + 13) % SAMPLE.length];
   }
 
@@ -1069,6 +1096,84 @@ export function startEngine(opts: EngineOptions = {}) {
     }
   }
 
+  /* ── a tower other people are also building ──────────────────────────────
+     Until Phase 4 the count could only move under a hand on this page's own
+     button, so the storey and the camera that watched it land were one act. A
+     shared tower splits that act in two.
+
+     What makes the cheap half cheap is rewindow(): the DOM holds a window of
+     RENDER_CAP storeys around the camera and slides that window to wherever the
+     camera is. A floor landing at the top of a tower nobody is looking at up
+     there needs no element at all -- not built and hidden, simply never built,
+     and it will be built if and only if the camera ever climbs to it. */
+  function towerGrew(n: number){
+    if(n <= count){ return; }   /* nothing is ever deleted, and this is not a rebuild */
+    count = n;
+    relight();
+    paint();
+    /* no fraction: the rail is longer, the camera has not moved along it, so a
+       visitor parked at street level is still parked at street level */
+    frame();
+  }
+
+  /* The animated half, named for what it is: the storeys themselves, arriving one
+     at a time with the beat and the climb, exactly as a buyer has always seen
+     them. Quiet, because floors somebody else paid for are not this viewer's news
+     to announce over their own. */
+  function landStorey(n: number, quiet?: boolean){
+    while(count < n){ addFloor(quiet); }
+  }
+
+  /* ── what the poller calls ───────────────────────────────────────────────
+     One entry point, so the order cannot be got wrong: the names go in first,
+     because a storey is built once, out of whatever is known about it at the
+     moment it is built, and only then does the tower grow. */
+  function applyTower(n: number, named: RemoteFloor[]){
+    for(var i = 0; i < named.length; i++){
+      /* §8 redacts by publishing nothing: a hidden floor keeps its height and
+         loses its name, and these are the names that then never reach the DOM. */
+      if(!named[i].hidden){ residents.set(named[i].no, named[i].name); }
+    }
+
+    /* A ?n= tower is a sample and the note over it says so. Real storeys are not
+       mixed into it: that link asked for a finished building, not for this one. */
+    if(/[?&]n=\d/.test(location.search)){ return; }
+    if(n <= count){ return; }
+
+    /* Nothing built yet: this page has just opened on a tower that already stands,
+       and it opens parked on the ceiling like any other. So the window that
+       matters is the top one -- building all n would be a hundred thousand
+       elements for a tower nobody has scrolled past. */
+    if(!floors.length){
+      count = n;
+      var first = Math.max(1, count - RENDER_CAP + 1);
+      winLo = first - 1;
+      for(var no = first; no <= count; no++){
+        var el = makeFloor(no);
+        floors.push(el);
+        stack.appendChild(el);
+      }
+      relight();
+      paint();
+      /* the move a resize makes, and for the reason a resize makes it: opening on
+         a finished tower is not a climb. The beat is armed on the frame after, so
+         the ground falls on the tower's own curve. */
+      sky.classList.remove("is-climb");
+      frame(1);
+      requestAnimationFrame(function(){ sky.classList.add("is-climb"); });
+      return;
+    }
+
+    /* A few storeys arriving above a camera that is watching the ceiling get the
+       beat and the climb. A hundred is a different tower, and that one only moves
+       the number. */
+    if(n - count <= 8 && autoPan - pan <= (tok("--fh0") || 52)){
+      landStorey(n, true);
+    } else {
+      towerGrew(n);
+    }
+  }
+
   /* ── press once for one floor, or hold to charge up a batch ─────────────
      Holding does NOT buy anything per tick. It only counts: the pending order
      grows to N floors, and one release becomes ONE payment of $N. */
@@ -1230,6 +1335,10 @@ export function startEngine(opts: EngineOptions = {}) {
   if(window.ResizeObserver){ new ResizeObserver(function(){ refit(); }).observe(sky); }
 
   /* ── boot ─────────────────────────────────────────────────────────────── */
+  /* The handle goes out before the sample tower is seeded, so a poller that
+     answers on the same tick still lands on a booted engine. */
+  engineHandle = { applyTower: applyTower };
+  if(opts.onReady){ opts.onReady(engineHandle); }
   (function seed(){
     var m = /[?&]n=(\d+)/.exec(location.search);
     var n = m ? Math.min(parseInt(m[1], 10) || 0, 400) : 0;
