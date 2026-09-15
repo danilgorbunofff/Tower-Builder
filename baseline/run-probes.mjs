@@ -1,11 +1,15 @@
 /* run-probes.mjs — captures every probe in tools/ against a running copy of the app.
 
-   This is the capture half of the port gate. `baseline/` holds the readings taken
-   from the hand-written index.html; `after/` holds the same readings taken from the
-   rebuilt app; `compare.mjs` diffs them.
+   This is the capture half of the port gate. `baseline/fonts/` holds the readings
+   taken from the hand-written index.html; `after/` holds the same readings taken
+   from the rebuilt app; `compare.mjs` diffs them.
 
-     node baseline/run-probes.mjs --base http://127.0.0.1:58695/index.html --out baseline
-     node baseline/run-probes.mjs --base http://127.0.0.1:3000            --out after
+     node baseline/fontserver.mjs                 # leave running in another shell
+     node baseline/run-probes.mjs --out baseline/fonts
+     node baseline/run-probes.mjs --base http://127.0.0.1:3000 --out after
+
+   The reading is taken through fontserver.mjs, not against index.html directly,
+   because the two do not agree: see the head of fontserver.mjs and nofonts/.
 
    Existing files are left alone unless --force, so a re-run only fills gaps.
    `--no-shot` throughout: the readings are the evidence, and the PNGs could never
@@ -23,7 +27,7 @@ const ROOT = join(HERE, "..");
 
 const argv = process.argv.slice(2);
 const arg = (k, d) => { const i = argv.indexOf("--" + k); return i >= 0 ? argv[i + 1] : d; };
-const OUT   = join(ROOT, arg("out", "baseline"));
+const OUT   = join(ROOT, arg("out", "baseline/fonts"));
 const BASE  = arg("base", "http://127.0.0.1:58695/index.html");
 const FORCE = argv.includes("--force");
 /* narrow the sweep while chasing one failure: --probe roundtrip --vp mobile */

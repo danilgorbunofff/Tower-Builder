@@ -1,0 +1,63 @@
+SETTLE desktop atRest=1284 waited=800ms built=true running=0
+EVAL desktop {
+ "meterInsideBtn": {
+  "btnH": 68,
+  "meterIn": true,
+  "idleOpacity": 0,
+  "overflow": true
+ },
+ "tapAddsOne": {
+  "from": 8,
+  "to": 9,
+  "ok": true
+ },
+ "holdCounts": {
+  "label": {
+   "price": "$4",
+   "text": "BUILD 4 FLOORS",
+   "charging": true,
+   "aria": "Build 4 floors for 4 dollars in one payment",
+   "barW": 49.3,
+   "meterOp": 1,
+   "barBg": "rgb(255, 224, 113)"
+  },
+  "builtYet": 0,
+  "grew": true,
+  "promise": true,
+  "barFilled": 49.3
+ },
+ "releaseCommitsBatch": {
+  "promised": 4,
+  "base": 9,
+  "halfway": 2,
+  "built": 4,
+  "ok": true,
+  "labelBack": true,
+  "ariaBack": "Build one floor for one dollar",
+  "staggerSel": true
+ },
+ "postHoldTap": {
+  "eaten": true,
+  "thenAdds": true
+ },
+ "kbdBatch": {
+  "queuedPrice": "$3",
+  "queuedText": "BUILD 3 FLOORS",
+  "built": 3,
+  "ok": true
+ },
+ "kbdReset": {
+  "price": "$1",
+  "text": "BUILD A FLOOR"
+ },
+ "cancelAborts": {
+  "charged": true,
+  "built": 0,
+  "ok": true
+ },
+ "contextMenuPrevented": true,
+ "errs": [],
+ "floors": 17
+}
+EVAL-ERR null
+STAGES desktop launch=1438 setup=1562 load=2816 fonts=2834 settle=3697 probe=8925 done=8926

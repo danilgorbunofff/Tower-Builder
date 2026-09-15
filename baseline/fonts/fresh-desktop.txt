@@ -1,0 +1,25 @@
+SETTLE desktop atRest=20178 waited=800ms built=true running=0
+EVAL desktop {
+ "v": "fresh",
+ "scrollTop": 5641,
+ "scrollMax": 5641,
+ "atCeiling": true,
+ "pan": 5641,
+ "panU": 1383,
+ "fh0": 52,
+ "depth": 48,
+ "first": 73,
+ "last": 120,
+ "ascending": true,
+ "drop": 3744,
+ "dropIsBase": true,
+ "inFrame": 14,
+ "storeyAtCentre": 115,
+ "storeyTheModelWants": 115,
+ "towerVisible": true,
+ "diag": {
+  "fh": null
+ }
+}
+EVAL-ERR null
+STAGES desktop launch=1062 setup=1154 load-timeout=7230 fonts-timeout=8861 settle=22188 probe=22196 done=22196

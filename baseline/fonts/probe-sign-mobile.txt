@@ -1,0 +1,4 @@
+SETTLE mobile atRest=19015 waited=1000ms built=true running=0
+EVAL mobile "{\"vw\":390,\"vh\":844,\"sign\":[12,12,89,117],\"roof\":[113,79.8,164,56],\"gapPx\":12,\"fit\":\"calc((50% - 164px / 2 - 24px) / .9)\",\"s\":\".9\",\"bw\":\"164px\"}"
+EVAL-ERR null
+STAGES mobile launch=1079 setup=1160 load-timeout=7181 fonts-timeout=8682 settle=21001 probe=21005 done=21006

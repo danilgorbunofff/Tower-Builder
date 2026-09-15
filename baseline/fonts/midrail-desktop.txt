@@ -1,0 +1,34 @@
+SETTLE desktop atRest=16023 waited=800ms built=true running=0
+EVAL desktop {
+ "max": 5641,
+ "parkedAt": 2538,
+ "share": 0.45,
+ "pan": 2538,
+ "panU": 622.29,
+ "panFar": 31.11,
+ "starOp": 0,
+ "moonOp": 0,
+ "fh": 52,
+ "storeysAboveStreet": 49,
+ "frameTopArtY": 1298,
+ "floorsInFrame": 18,
+ "frameFullOfStoreys": true,
+ "streetGone": true,
+ "roofAboveFramePx": 2927,
+ "firstBandMovedPx": -30090,
+ "stillOnTheRail": true,
+ "windowLen": 48,
+ "windowFirst": 32,
+ "windowLast": 79,
+ "windowContiguous": true,
+ "windowDropPx": 1612,
+ "windowDropMatchesBase": true,
+ "windowNumberedInOrder": true,
+ "windowSitsRight": true,
+ "storeyAtCentre": 56,
+ "storeyTheModelWants": 56,
+ "centreIsRealStorey": true,
+ "ok": true
+}
+EVAL-ERR null
+STAGES desktop launch=1333 setup=1362 load-timeout=7371 fonts-timeout=8879 settle=18236 probe=18951 done=18951
