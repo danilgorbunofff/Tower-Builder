@@ -97,6 +97,10 @@ A working prototype with **payments switched off**. The reference flow assumes S
 provider is wired up, and nothing here takes money. Also undecided: whether a buyer may edit or
 remove their own floor, and the moderation rules for names and links.
 
+`OVERVIEW.md` is the long read: the pitch end to end, the business and the money, and how the app is
+actually built — the five systems, the laws of the world, and a map of where each one lives in
+`index.html`.
+
 `PRODUCT.md` is the product truth — users, positioning, confirmed capabilities, and the things that
 are deliberately still open. Read it before adding a feature; it is the document that says what this
 is *not*. `archive/v1-bricks.html` is the abandoned first world, kept for reference.
