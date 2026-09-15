@@ -1,0 +1,907 @@
+/* ─────────────────────────────  tokens  ───────────────────────────── */
+:root{
+  /* the grid: nothing lands off it */
+  --u: 4px;
+
+  /* The far end of the climb. The sky itself is a column of bands — one per
+     phase of the day, drawn by buildSky() — running from the hazy daylight over
+     the street up into space; this is only the last of them, and what is left
+     behind if a window is ever taller than the art. */
+  --s1: #02040c;
+
+  /* tray + ink */
+  --tray:   #1b1729;
+  --tray-2: #120f1e;
+  --tray-3: #08060f;
+  --edge:   #2e2745;
+
+  --white: #ffffff;
+  --text:  #e9e3f4;
+  --muted: #a094b4;
+
+  /* the one control */
+  --gold:      #ffc22e;
+  --gold-hi:   #ffe071;
+  --gold-lo:   #cc8a00;
+  --gold-deep: #8a5a00;
+  --good:      #7fd14f;
+
+  /* ── tower geometry ──
+     The *0 pair is the facade at full size for this viewport; --fh/--wh are what
+     the tower actually draws with, and JS steps them down from the base when the
+     tower would outgrow the frame (see fit()). --fh MUST stay equal to:
+     4 slab + 4 sill + --wh window + 12 header */
+  --bw0:  220px;  /* building width  */
+  --fh0:   52px;  /* storey height   */
+  --wh0:   32px;  /* window height   */
+  --ww0:   56px;  /* window width    */
+  --pad0:   8px;  /* side padding    */
+  --bw:  var(--bw0);
+  --fh:  var(--fh0);
+  --wh:  var(--wh0);
+  --ww:  var(--ww0);
+  --pad: var(--pad0);
+  --slab:  4px;
+
+  /* how much sky the roofline keeps above it */
+  --crown-gap: 120px;
+
+  /* where the street furniture stands — a little above the very bottom edge of
+     the frame, so the pavement itself is visible under the lamp */
+  --curb: 4.5vh;
+
+  /* where the building stands. Never hand-set: frame() writes it from the scene
+     art on every pass, so the camera always cuts the tower on the sidewalk line
+     itself instead of somewhere below it. */
+  --ground: 4.5vh;
+
+  /* facade */
+  --frame:      #6e6759;
+  --frame-d:    #4e4a40;
+  --concrete:   #b9b2a1;
+  --concrete-hi:#cec7b4;
+  --concrete-lo:#8e8878;
+  --glass:      #17243d;
+
+  --pan:  0px;   /* set by JS — how far the camera has slid down the tower */
+  --pan-u:0px;   /* the same slide in the scene art's own units (pan ÷ art scale) */
+  --drop: 0px;   /* set by JS — how high the window's base sits above the kerb */
+  --n:    0;     /* total storeys, set by JS. The DOM only ever paints a window */
+
+  /* How much of the night sky is showing. Stars and moon are the one part of
+     the world that does not move — four hundred floors of concrete still do not
+     shift against them — so they are not scrolled into view, they are faded in
+     by how high the camera has got. Set by frame(). */
+  --star-op: 0;
+  --moon-op: 0;
+
+  /* The length of the climb: how much tower stands above the frame. It is the
+     scroll rail's height, so the maximum scroll is the newest floor. Set by JS. */
+  --scroll-max: 0px;
+}
+
+*,*::before,*::after{ box-sizing:border-box; margin:0; padding:0; }
+
+html{
+  height:100%;
+  overflow:hidden;
+  background:var(--s1);
+}
+
+body{
+  height:100%;
+  overflow:hidden;
+  font-family:'Silkscreen','Courier New',monospace;
+  color:var(--text);
+  -webkit-font-smoothing:none;
+  font-smooth:never;
+  image-rendering:pixelated;
+}
+
+svg{ image-rendering:pixelated; }
+button{ font:inherit; color:inherit; }
+:focus{ outline:none; }
+:focus-visible{ outline:var(--u) solid var(--white); outline-offset:var(--u); }
+
+.sr{
+  position:absolute; top:0; left:0;
+  width:1px; height:1px;
+  clip:rect(0 0 0 0); clip-path:inset(50%);
+  overflow:hidden; white-space:nowrap;
+}
+
+/* ─────────────────────────────  layout  ───────────────────────────── */
+#stage{
+  position:fixed; inset:0;
+  display:flex; flex-direction:column;
+  overflow:hidden;
+}
+
+/* ─────────────────────────────  sky  ───────────────────────────── */
+.sky{
+  position:relative;
+  flex:1 1 auto;
+  min-height:0;
+  overflow:hidden;
+  background:var(--s1);
+}
+/* The art is a column many frames tall, and a viewBox that tall would scale the
+   whole world down against the storeys the tower is built from. The element is
+   therefore given one frame's worth of that column: 8216 art units / 216 = 38.037
+   of the frame's own height. preserveAspectRatio then lands on exactly the fit the
+   storey height, the kerb and the lamp were all designed against, with the extra
+   sky hanging above the frame for .sky to clip. The percentage is 8216/216*100 and
+   has to move with the viewBox: the element's *height in frames* is the whole fit
+   contract, and the column simply keeps that ratio while it gets longer. */
+.sky svg.scene{
+  position:absolute;
+  left:0; right:0; bottom:0;
+  width:100%;
+  height:3803.704%;
+  z-index:0;
+  display:block;
+  shape-rendering:crispEdges;
+}
+
+/* The far layer. Same fit as the scene — one frame, one scale — but pinned to the
+   frame rather than written into the column, so it is the one thing on the page
+   that does not fall at 1x. It creeps instead: one twentieth of the climb, the way
+   the stars of a real sky hold almost still while you leave the ground. */
+.sky svg.far{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  z-index:0;
+  display:block;
+  shape-rendering:crispEdges;
+  pointer-events:none;
+}
+.sky svg.far .drift{ transform:translateY(var(--pan-far, 0px)); }
+/* The worlds ride no rail of their own: they are drawn inside .drift and creep
+   with the moon, at the moon's own twentieth of the climb, because out here
+   distance is a speed before it is a size. What puts them in the frame is where
+   they stand in the layer — half a frame apart, so the sky always has one or two
+   of them in it and never more than three. That is what makes them the view the
+   moon is in rather than scenery sliding past the window. */
+
+/* ──────────────────────────  the climb  ────────────────────────── */
+/* Scrolling *is* the climb. The rail is exactly as long as the tower stands
+   above the frame, so the maximum scroll is the newest floor and scrolling all
+   the way down walks the camera back to the street. Nothing animates here: --pan
+   is written from scrollTop, and a purchase sets scrollTop to the new ceiling
+   before it paints, so the climb beat below owns every visible pixel of it.
+   There is no scrollbar — it would sit under the one button on the page and
+   offer a second, worse way to change the same number. */
+.scroller{
+  position:absolute; inset:0;
+  z-index:3;
+  overflow-y:auto; overflow-x:hidden;
+  overscroll-behavior:contain;
+  scrollbar-width:none;
+  -ms-overflow-style:none;
+}
+.scroller::-webkit-scrollbar{ width:0; height:0; }
+.scroller:focus-visible{ outline:var(--u) solid var(--text); outline-offset:calc(-1 * var(--u)); }
+/* the rail is the climb's length *plus* the frame, because a scroll container can
+   only ever travel the distance its content overshoots it by */
+.scroll-rail{ width:1px; height:calc(var(--scroll-max, 0px) + 100%); }
+
+/* Back to the top. Small, ghosted, and out of the way: it exists so the climb is
+   reversible, not to compete with the one button that takes money. It only shows
+   once the roof is out of frame, so it never claims there is somewhere to go. */
+.totop{
+  position:absolute;
+  right:14px; bottom:14px;
+  z-index:4;
+  width:48px; height:48px;
+  display:grid; place-items:center;
+  background:rgba(4,6,14,.55);
+  border:0;
+  color:var(--text);
+  cursor:pointer;
+  opacity:0;
+  visibility:hidden;
+  transition:opacity 140ms steps(3,end), visibility 0s 140ms;
+}
+.totop.is-on{ opacity:.7; visibility:visible; transition:opacity 140ms steps(3,end); }
+.totop:hover, .totop:focus-visible{ opacity:1; }
+.totop svg{ width:22px; height:22px; display:block; }
+
+/* A hand on the wheel is in charge: a 520ms curve on a scroll rail is just lag.
+   The beat is re-armed by the next purchase, the moment the camera takes over. */
+.sky.is-scroll .camera,
+.sky.is-scroll .pavement,
+.sky.is-scroll svg.scene .slide,
+.sky.is-scroll svg.far .drift,
+.sky.is-scroll svg.far .planets{ transition:none !important; }
+
+/* Climbing means the world drops away: the sky itself, the sun and the clouds on
+   it, the skyline and the street all ride one rail and leave the frame from the
+   bottom. A CSS transform inside an SVG is measured in the art's own units, so
+   this one takes the slide divided by the art's scale; frame() does the maths.
+   Everything in this layer moves at exactly 1x: the tower is standing on this
+   ground, and a camera that climbs while its own street lags behind reads broken. */
+.sky svg.scene .slide{ transform:translateY(var(--pan-u, 0px)); }
+
+/* The one exception, and the reason the climb has a far end at all: the stars and
+   the moon are not part of the air, so they are not scrolled into view. They are
+   faded in by altitude instead — you do not climb to the stars, you climb out of
+   the light that hides them — and what little they do move, they move far slower
+   than the ground. */
+.sky svg.far .stars{ opacity:var(--star-op, 0); }
+.sky svg.far .moon { opacity:var(--moon-op, 0); }
+
+/* The worlds arrive the way the moon does — same fade, same question of altitude
+   — and that is the whole of their motion: they creep, they are not carried
+   past. A star is a ceiling you climb out of and a planet is something you go
+   past, so the passing has to be real, and it is: each world stands half a frame
+   higher in the layer than the last one, and the creep is what brings them
+   through. The ones in the frame are always the ones for the height you are at.
+   They arrive behind the moon, too, and that is the whole of the depth here: the
+   moon is the one thing in this sky you are close to, so it is the one thing
+   drawn at its own strength, and a field of worlds that faded in as hard as the
+   moon would be a field of worlds at the window. Three quarters of its fade is
+   the difference between the moon and everything past it. */
+.sky svg.far .planets{ opacity:calc(var(--moon-op, 0) * .72); }
+
+/* One of the worlds has a moon of its own, and it goes round: eight places on a
+   circle of eight units, four seconds apiece, both numbers on the 2-unit grid
+   the layer is drawn on because a rock that lands between the pixels is a paper
+   planet. It is translated rather than rotated — a pixel rock has no business
+   spinning — and it circles the world it belongs to, so the group it animates
+   sits at that world's own middle and the offsets are from there. */
+.orbit{ animation:lev-orbit 32s step-end infinite; }
+@keyframes lev-orbit{
+  0%   { transform:translate(  8px,   0); }
+  12.5%{ transform:translate(  6px,   6px); }
+  25%  { transform:translate(  0,     8px); }
+  37.5%{ transform:translate( -6px,   6px); }
+  50%  { transform:translate( -8px,   0); }
+  62.5%{ transform:translate( -6px,  -6px); }
+  75%  { transform:translate(  0,    -8px); }
+  87.5%{ transform:translate(  6px,  -6px); }
+  100% { transform:translate(  8px,   0); }
+}
+
+.clouds{ animation:drift 240s steps(240) infinite; }
+@keyframes drift{ from{ transform:translateX(0); } to{ transform:translateX(-360px); } }
+
+/* ───────────────────────  the things that float  ────────────────────────
+   Everything the climb passes on the way up is ordinary at the bottom and
+   strange above it, and by the end the only thing holding a bench, a goldfish
+   and a front door off the ground is that nobody has said otherwise. Four
+   motions, every one of them stepped: pixel art that glides is pixel art that
+   blurs. The translate lives on the wrapper's own transform attribute and the
+   motion on a child <g>, because a CSS transform replaces that attribute
+   outright rather than adding to it. */
+.lev-bob { animation:lev-bob  7s steps(7,end) infinite alternate; }
+.lev-sway{ animation:lev-sway 11s steps(4,end) infinite alternate; }
+.lev-flip{ animation:lev-flip 16s steps(4,end) infinite; }
+.lev-spin{ animation:lev-spin 40s steps(8,end) infinite; }
+
+@keyframes lev-bob { from{ transform:translateY(-3px); } to{ transform:translateY(3px); } }
+@keyframes lev-sway{ from{ transform:rotate(-6deg); }     to{ transform:rotate(6deg); } }
+@keyframes lev-flip{ from{ transform:rotate(0deg); }      to{ transform:rotate(360deg); } }
+@keyframes lev-spin{ from{ transform:rotate(0deg); }      to{ transform:rotate(-360deg); } }
+
+/* a prop turns about its own middle, not about the column's origin */
+.lev-sway, .lev-flip, .lev-spin{ transform-box:fill-box; transform-origin:center; }
+
+/* ─────────────────────────────  the tower  ───────────────────────────── */
+/* the building is behind the street: as the camera climbs, the storeys that sink
+   past the kerb are covered by the near ground, not drawn over the pavement. That
+   cut is the sidewalk line, so the box rides down with the ground it is drawn on —
+   stretched up (never shrunk) by the same amount so its top stays glued to the
+   frame, and still riding after the street has left, so the lid keeps opening. */
+.camera{
+  position:absolute;
+  z-index:2;
+  inset:calc(-1 * var(--pan)) 0 var(--ground, var(--curb)) 0;
+  overflow:hidden;
+  transform:translateY(var(--pan));
+}
+
+.tower{
+  position:absolute;
+  left:50%;
+  bottom:0;
+  width:var(--bw);
+  margin-left:calc(var(--bw) / -2);
+}
+.tower.bump{ animation:bump 150ms steps(3,end) 1; }
+@keyframes bump{
+  0%  { translate:0 0; }
+  45% { translate:0 5px; }
+  100%{ translate:0 0; }
+}
+
+/* A purchase lands the new storey on the frame's top line at once, and then the
+   camera catches up: the whole building eases back down exactly one storey. The
+   fit holds the roofline still by design, so without this beat a floor that was
+   paid for looks like nothing happened. The ground falls with it, on the same
+   curve and the same clock — the tower must never outrun the street it stands on.
+   Armed after the first paint, never on the boot — a shared link opens on a
+   still frame. */
+.sky.is-climb .camera,
+.sky.is-climb .pavement,
+.sky.is-climb svg.scene .slide,
+.sky.is-climb svg.far .drift{ transition:transform 520ms cubic-bezier(.2,.75,.25,1); }
+
+/* absolutely-placed floors give the stack no height, so it carries an explicit offset.
+   Culled storeys are renumbered from 0, so the survivors must rise by the same
+   amount they lost — the offset lifts the stack, it never lowers it. */
+.stack{
+  position:absolute;
+  left:0; bottom:0;
+  width:100%;
+  height:0;
+  list-style:none;
+  transform:translateY(calc(-1 * var(--drop)));
+}
+
+/* one storey: header band / window row / sill / slab, bottom-anchored */
+.floor{
+  position:absolute;
+  left:0;
+  bottom:calc(var(--i) * var(--fh));
+  width:100%;
+  height:var(--fh);
+  background:var(--concrete);
+}
+
+/* the panel line between storeys, and where the floor number lives */
+.hdr{
+  position:absolute;
+  top:0; left:0; right:0;
+  height:12px;
+  background:var(--concrete-hi);
+  box-shadow:
+    inset 0 -2px 0 var(--concrete-lo),
+    inset 0  2px 0 rgba(255,255,255,.22);
+}
+.no{
+  position:absolute;
+  left:6px; top:2px;
+  padding:2px 3px;
+  font-family:'Press Start 2P','Courier New',monospace;
+  font-size:8px;
+  line-height:8px;
+  background:#2b3040;
+  color:#cfd6e6;
+}
+
+.row{
+  position:absolute;
+  left:var(--pad); right:var(--pad);
+  bottom:calc(var(--slab) * 2);
+  height:var(--wh);
+  display:flex;
+  align-items:stretch;
+  justify-content:space-between;
+}
+
+.win{
+  position:relative;
+  width:var(--ww);
+  background:var(--glass);
+  box-shadow:
+    0 0 0 2px var(--frame),
+    0 0 0 4px var(--frame-d),
+    inset 0 -2px 0 rgba(0,0,0,.42),
+    inset 0  2px 0 rgba(180,205,255,.07);
+}
+/* lit: warm interior, curtain down one side */
+.win[data-lit="1"]{
+  background:#ffcd63;
+  box-shadow:
+    0 0 0 2px var(--frame),
+    0 0 0 4px var(--frame-d),
+    inset 0  8px 0 #ffe7a6,
+    inset 0 -4px 0 #d99f38,
+    inset -10px 0 0 var(--curtain),
+    inset 0 -2px 0 rgba(0,0,0,.30);
+}
+/* every window has a mullion */
+.win::before{
+  content:"";
+  position:absolute;
+  left:50%; top:0; bottom:0;
+  width:2px;
+  margin-left:-1px;
+  background:var(--frame);
+}
+/* someone left this one ajar */
+.win[data-lite="1"]::after{
+  content:"";
+  position:absolute;
+  left:0; right:0; bottom:0;
+  height:4px;
+  background:#ffe7a6;
+}
+
+/* lobby entrance — replaces the middle window on floor 1 */
+.door{
+  position:relative;
+  width:44px;
+  background:#3a3026;
+  box-shadow:
+    0 0 0 2px var(--frame),
+    0 0 0 4px var(--frame-d),
+    inset 0 10px 0 #ffcd63,
+    inset 0 12px 0 var(--frame),
+    inset 0 -2px 0 rgba(0,0,0,.5);
+}
+.door::before{
+  content:"";
+  position:absolute;
+  right:7px; top:22px;
+  width:3px; height:3px;
+  background:#ffd98a;
+}
+/* the lamp over the entrance, up in the header band */
+.lamp{
+  position:absolute;
+  left:calc(var(--pad) + var(--ww) + 6px);
+  top:7px;
+  width:14px; height:5px;
+  background:#ffe7a6;
+  box-shadow:0 0 0 2px #6b5a3a;
+}
+
+/* balcony parapet, crossing the bottom of the window row */
+.rail{
+  position:absolute;
+  left:var(--pad); right:var(--pad);
+  bottom:calc(var(--slab) * 2);
+  height:10px;
+  background:#c5bfae;
+  box-shadow:
+    inset 0  4px 0 #e2dcca,
+    inset 0 -4px 0 #7d7767,
+    inset 0 -6px 0 #615c50;
+}
+/* once the storeys are stepped down, a fixed 10px parapet swallows the whole
+   window row — drop it and the facade reads as banded glass instead of mud */
+.sky.is-dense .rail{ display:none; }
+/* something living on the balcony */
+.thing{
+  position:absolute;
+  left:16px;
+  bottom:10px;
+  width:16px; height:12px;
+  box-shadow:
+    inset 0 6px 0 #5c8f43,
+    inset 0 2px 0 #74ad55,
+    inset 0 -4px 0 #8a5a3a;
+}
+.thing[data-kind="ac"]{
+  left:auto; right:18px;
+  width:18px; height:10px;
+  box-shadow:
+    inset 0 0 0 2px #9aa0a8,
+    inset 0 3px 0 #c3c9d1;
+}
+.thing[data-kind="laundry"]{
+  left:24px;
+  width:26px; height:9px;
+  box-shadow:
+    inset 0 4px 0 #e6e2f0,
+    inset 6px 0 0 #d8637f,
+    inset -8px 0 0 #6fa8d6;
+}
+
+/* a belt course every tenth storey — the tower's visible decade marks */
+.belt{
+  position:absolute;
+  left:0; right:0; bottom:0;
+  height:8px;
+  background:#8a8474;
+  box-shadow:
+    inset 0  2px 0 #b3ad9c,
+    inset 0 -2px 0 #5f5a4e;
+}
+
+/* hoarding on the newest floor */
+.tag{
+  position:absolute;
+  left:calc(100% + 10px);
+  bottom:var(--pad);
+  max-width:150px;
+  padding:6px 7px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  background:#241d33;
+  color:var(--white);
+  font-family:'Press Start 2P','Courier New',monospace;
+  font-size:8px;
+  line-height:1;
+  box-shadow:0 0 0 3px var(--gold), 0 4px 0 3px rgba(0,0,0,.4);
+  opacity:0;
+  transition:opacity 180ms steps(3,end);
+}
+.tag::before{
+  content:"";
+  position:absolute;
+  right:100%; bottom:7px;
+  width:13px; height:4px;
+  background:var(--gold);
+}
+.floor.is-new .tag{ opacity:1; }
+.floor.is-new .tag b{ color:var(--gold); font-weight:400; }
+
+/* landing: four visible frames, then still */
+.floor.is-new{ animation:drop 190ms steps(4,end) 1; }
+@keyframes drop{
+  from{ translate:0 -26px; }
+  to  { translate:0 0; }
+}
+.floor.is-new::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background:var(--white);
+  animation:flash 260ms steps(3,end) 1 forwards;
+}
+@keyframes flash{ 0%{ opacity:.5; } 100%{ opacity:0; } }
+
+/* the roof sits on top of the newest floor, so the tower always reads as unfinished */
+.roof{
+  position:absolute;
+  left:0;
+  bottom:calc(var(--n) * var(--fh));
+  width:100%;
+  height:56px;
+}
+.parapet{
+  position:absolute;
+  left:0; right:0; bottom:0;
+  height:10px;
+  background:var(--concrete-hi);
+  box-shadow:
+    inset 0  3px 0 rgba(255,255,255,.3),
+    inset 0 -3px 0 var(--concrete-lo);
+}
+.hatch{
+  position:absolute;
+  left:14px; bottom:10px;
+  width:22px; height:16px;
+  background:#6f695d;
+  box-shadow:
+    inset 0  5px 0 #8f8879,
+    inset 0 -3px 0 #4e4a40;
+}
+/* the water tank, stacked in pixel rows */
+.tank{
+  position:absolute;
+  right:22px; bottom:10px;
+  width:36px; height:26px;
+  background:#8f9aa8;
+  box-shadow:
+    inset 0  5px 0 #b6c0cc,
+    inset 0 -5px 0 #5e6875,
+    inset 0 -4px 0 #5e6875,
+    0 -4px 0 #5e6875;
+}
+.tank::before{
+  content:"";
+  position:absolute;
+  left:4px; right:4px; bottom:100%;
+  height:4px;
+  background:#6f7a88;
+}
+.mast{
+  position:absolute;
+  left:60px; bottom:10px;
+  width:4px; height:38px;
+  background:#7d786c;
+}
+.mast::before{
+  content:"";
+  position:absolute;
+  left:-5px; top:-4px;
+  width:14px; height:4px;
+  background:#7d786c;
+}
+.beacon{
+  position:absolute;
+  left:58px; bottom:46px;
+  width:8px; height:8px;
+  background:#ff4d4d;
+  animation:blink 3.2s steps(2,end) infinite;
+}
+@keyframes blink{
+  0%,  45%  { opacity:1; }
+  46%, 92%  { opacity:.18; }
+  93%, 100% { opacity:1; }
+}
+
+/* ─────────────────────────────  street  ───────────────────────────── */
+/* A centred row of three slots: the lamp, a gap exactly the width of the
+   building, and the neighbours. Equal-width outer slots keep the middle slot
+   landing exactly under the tower at any viewport width — no percentage maths. */
+.pavement{
+  position:absolute;
+  z-index:1;
+  left:0; right:0;
+  bottom:var(--curb);
+  transform:translateY(var(--pan));
+  display:flex;
+  align-items:flex-end;
+  justify-content:center;
+  shape-rendering:crispEdges;
+}
+.pavement .slot{ flex:0 0 auto; display:flex; align-items:flex-end; }
+.pavement .slot.side { width:116px; }
+.pavement .slot.mid  { width:var(--bw); }
+.pavement .slot.left { justify-content:flex-end;   padding-right:20px; }
+.pavement .slot.right{ justify-content:flex-start; padding-left:20px; }
+.pavement svg.lamppost  { width:96px; height:96px; }
+.pavement svg.passersby { width:72px; height:80px; }
+
+/* ─────────────────────────────  sign  ───────────────────────────── */
+.sign{
+  position:absolute;
+  top:20px; left:20px;
+  z-index:3;
+  /* The roofline parks in this same top strip once the tower is tall, so the
+     panel may never reach the tower's left edge: it is capped at the sky left
+     over beside it, at every viewport and every length of "last in" name. */
+  --sign-s:1;
+  --sign-fit: calc((50% - var(--bw) / 2 - 24px) / var(--sign-s));
+  min-width:min(250px, var(--sign-fit));
+  max-width:var(--sign-fit);
+  padding:16px 18px 14px;
+  background:var(--tray-2);
+  box-shadow:
+    0 0 0 4px var(--tray-3),
+    0 0 0 8px var(--tray),
+    0 8px 0 8px rgba(0,0,0,.34),
+    inset 0 4px 0 rgba(255,255,255,.08);
+}
+.sign-k{
+  margin-bottom:9px;
+  font-size:8px;
+  letter-spacing:1px;
+  color:var(--muted);
+}
+.sign-n{
+  margin-bottom:10px;
+  font-family:'Press Start 2P','Courier New',monospace;
+  font-size:34px;
+  line-height:1;
+  color:var(--gold);
+  font-variant-numeric:tabular-nums;
+}
+.sign-row{
+  display:flex; align-items:baseline; gap:8px;
+  padding-top:9px;
+  border-top:4px solid var(--edge);
+  font-size:8px;
+  color:var(--muted);
+}
+.sign-row b{
+  font-family:'Press Start 2P','Courier New',monospace;
+  font-size:9px;
+  font-weight:400;
+  color:var(--good);
+}
+.sign-last{
+  display:block;
+  margin-top:9px;
+  max-width:236px;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  font-size:8px;
+  color:var(--white);
+}
+.sign-last b{ color:var(--gold); font-weight:700; }
+
+/* ─────────────────────────────  tray + button  ───────────────────────────── */
+.tray{
+  position:relative;
+  flex:0 0 auto;
+  /* content-driven: the button's 3D plinth hangs 16px below it and the hint can
+     wrap to two lines on a narrow window — a fixed height shaved both off */
+  padding:10px 0 calc(20px + env(safe-area-inset-bottom, 0px));
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  background:var(--tray-2);
+  box-shadow:
+    inset 0 4px 0 var(--edge),
+    inset 0 8px 0 rgba(255,255,255,.04);
+}
+
+.order{
+  position:relative;
+  flex:0 0 auto;
+  width:min(640px, calc(100vw - 48px));
+  height:68px;
+  border:0;
+  padding:0;
+  cursor:pointer;
+  background:var(--gold);
+  color:var(--tray-3);
+  box-shadow:
+    inset  4px 0 0 var(--gold-hi),
+    inset -4px 0 0 var(--gold-lo),
+    inset 0  4px 0 var(--gold-hi),
+    inset 0 -8px 0 var(--gold-lo),
+    0 0 0 4px var(--tray-3),
+    0 8px 0 4px var(--gold-deep),
+    0 12px 0 4px rgba(0,0,0,.4);
+  transition:translate 70ms steps(2,end), box-shadow 70ms steps(2,end);
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+  touch-action:manipulation;
+}
+.order:hover{ background:var(--gold-hi); }
+.order.is-down{
+  translate:0 8px;
+  box-shadow:
+    inset  4px 0 0 var(--gold-hi),
+    inset -4px 0 0 var(--gold-lo),
+    inset 0  4px 0 var(--gold-hi),
+    inset 0 -8px 0 var(--gold-lo),
+    0 0 0 4px var(--tray-3),
+    0 0 0 4px var(--gold-deep),
+    0 4px 0 4px rgba(0,0,0,.4);
+}
+
+.order-label{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:14px;
+  font-family:'Press Start 2P','Courier New',monospace;
+  font-size:19px;
+  line-height:1;
+  transition:opacity 60ms steps(2,end);
+}
+.order-label em{
+  padding:7px 8px 6px;
+  background:var(--tray-3);
+  color:var(--gold-hi);
+  font-style:normal;
+  font-size:14px;
+  box-shadow:inset 0 -4px 0 rgba(0,0,0,.5);
+}
+.order.is-work .order-label{ opacity:.55; }
+
+/* Charge-up meter: while the button is held the order grows, and this bar shows
+   how many floors the single payment is about to buy. */
+.order-meter{
+  position:absolute;
+  left:12px;
+  right:12px;
+  bottom:11px;
+  height:6px;
+  background:var(--gold-deep);
+  opacity:0;
+  transition:opacity 60ms steps(2,end);
+  pointer-events:none;
+}
+.order-meter i{
+  display:block;
+  height:100%;
+  width:0;
+  background:var(--gold-hi);
+}
+.order.is-charging .order-meter{ opacity:1; }
+.order.is-charging .order-label em{
+  background:var(--gold-deep);
+  color:var(--gold-hi);
+}
+
+.order-hint{
+  max-width:calc(100vw - 40px);
+  font-family:'Press Start 2P','Courier New',monospace;
+  font-size:9px;
+  line-height:1.45;
+  text-align:center;
+  color:var(--muted);
+}
+.order-hint b{ color:var(--good); font-weight:400; }
+
+/* ─────────────────────────────  media  ───────────────────────────── */
+@media (max-width:1180px){
+  :root{ --bw0:184px; --fh0:48px; --wh0:28px; --ww0:44px; }
+  .sign{ --sign-s:.94; transform:scale(var(--sign-s)); transform-origin:top left; }
+  .pavement .slot.side { width:92px; }
+  .pavement svg.lamppost  { width:72px; height:72px; }
+  .pavement svg.passersby { width:54px; height:60px; }
+}
+
+@media (max-width:900px){
+  .tag{ max-width:110px; font-size:7px; padding:5px 6px; }
+  .pavement svg.passersby{ display:none; }
+}
+
+@media (max-width:520px){
+  :root{ --bw0:164px; --fh0:44px; --wh0:24px; --ww0:40px; --pad0:6px; --crown-gap:88px; }
+  .no{ left:4px; font-size:7px; line-height:7px; }
+  .door{ width:36px; }
+  .sign{ --sign-s:.9; top:12px; left:12px; padding:12px 13px 10px; transform:scale(var(--sign-s)); }
+  .sign-n{ font-size:26px; }
+  .sign-last{ max-width:176px; }
+  .tray{ padding:8px 0 calc(18px + env(safe-area-inset-bottom, 0px)); gap:6px; }
+  .order{ width:calc(100vw - 32px); height:64px; }
+  .order-label{ font-size:15px; gap:10px; }
+  .order-label em{ font-size:12px; padding:6px 7px 5px; }
+  .order-hint{ font-size:8px; }
+  .pavement .slot.side { width:60px; }
+  .pavement .slot.left { padding-right:12px; }
+  .pavement svg.lamppost{ width:48px; height:48px; }
+}
+
+/* a short window has less sky to give away — the crown gap is only air, so it
+   gives way first and the facade keeps its storey height for longer */
+/* The crown gap is the sky the roofline keeps in reserve at the very start. It
+   is the only part of the budget that costs nothing to give away, so a growing
+   tower spends it first and the roofline climbs before the base has to sink. */
+@media (max-height:860px){ :root{ --crown-gap:80px; } }
+@media (max-height:700px){ :root{ --crown-gap:56px; } }
+
+@media (max-height:680px){
+  .sign{ --sign-s:.84; transform:scale(var(--sign-s)); transform-origin:top left; }
+  .tray{ height:calc(84px + env(safe-area-inset-bottom, 0px)); }
+  .order{ height:56px; }
+  .order-label{ font-size:16px; }
+}
+
+@media (forced-colors:active){
+  .floor,.win,.rail,.belt{ forced-color-adjust:none; }
+  .order{ border:3px solid ButtonText; }
+  .sign{ border:3px solid CanvasText; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .clouds{ animation:none; }
+  .beacon{ animation:none; }
+  .lev-bob,
+  .lev-sway,
+  .lev-flip,
+  .lev-spin,
+  .orbit{ animation:none; }
+  .floor.is-new{ animation:none; }
+  .floor.is-new::after{ animation:none; }
+  .tower.bump{ animation:none; }
+  .sky.is-climb .camera,
+  .sky.is-climb .pavement,
+  .sky.is-climb svg.scene .slide,
+  .sky.is-climb svg.far .drift,
+  .sky.is-climb svg.far .planets{ transition:none; }
+  .totop{ transition:none; }
+  .tag{ transition:none; }
+  .order{ transition:none; }
+}
+
+/* --- about this file --------------------------------------------------------
+   Lines 1-880 are a verbatim copy of the <style> element in index.html (its
+   lines 44-923), so line N here is still line N+43 there. Keep it that way:
+   the probes measure computed geometry against this exact text, and every
+   comparison from here on is made against it. New rules go below this comment.
+
+   The linter flags five "a thick colored border on one side of a card" cases
+   in the verbatim region. They are pixel-art bevels and light bands built from
+   inset box-shadows on the documented 4px grid -- the lit-window glow, the
+   curtain down one side, the ajar strip, the tray edge, the button bevel -- and
+   not cards. Editing them to quiet the linter would move geometry the probes
+   assert on, so they stay. */
+
+/* --- vendored arcade faces -------------------------------------------------
+   These three cuts used to arrive from fonts.googleapis.com, which this machine
+   cannot reach. An unanswerable stylesheet is not a harmless failure here: it
+   holds the load event for minutes, so every probe reading was taken fontless.
+
+   The family names below are the originals deliberately. probe-px2.js:251 asks
+   whether the page has its fonts by looking for a FontFace whose .family
+   contains "Press Start" (and "Silkscreen"), so renaming them would make a
+   correctly-drawn page report as fontless. The stylesheet above is a verbatim
+   copy of the original and asks for exactly these names. */
+@font-face{font-family:'Press Start 2P';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/press-start-2p-latin-400-normal.woff2) format('woff2');}
+@font-face{font-family:'Silkscreen';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/silkscreen-latin-400-normal.woff2) format('woff2');}
+@font-face{font-family:'Silkscreen';font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/silkscreen-latin-700-normal.woff2) format('woff2');}
