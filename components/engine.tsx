@@ -1,8 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
-import { startEngine, type EngineOptions } from "@/lib/engine";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { OrderModal } from "@/components/order-modal";
+import { startEngine } from "@/lib/engine";
 import { startFeed } from "@/lib/feed";
+import { showLiveNote } from "@/lib/live";
+import { startReturn } from "@/lib/return";
 
 /* The one line of React between the page and the tower.
 
@@ -17,15 +20,54 @@ import { startFeed } from "@/lib/feed";
    mount from building two towers and charging twice per tap.
 
    The poller is handed the engine's handle rather than reaching for the DOM, so
-   there is exactly one thing in the page that knows how a tower grows. */
-export function Engine({ onPurchase }: EngineOptions = {}) {
-  useEffect(() => {
-    startEngine({ onPurchase, onReady: startFeed });
-    /* boot once and keep the handler it was given: the engine owns the document
-       from here on, and an onPurchase whose identity changed would want to be a
-       fresh boot, not a second listener on the same buttons */
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+   there is exactly one thing in the page that knows how a tower grows.
+
+   ── paymentsLive ───────────────────────────────────────────────────────────
+   One prop, and it decides which of two entirely different things #order does.
+
+   False (no Stripe key, or no database) is the demo this repo has always been:
+   no onPurchase is passed, so lib/engine.ts's own buy()/press() keep building
+   floors in the browser, nothing is charged, and every capture in baseline/ --
+   which was taken in exactly this state -- still describes it.
+
+   True hands the engine an onPurchase, and the early return at the top of buy()
+   means the engine stops building anything itself: it reports the order and this
+   component opens the form. Floors then only appear once the server says they
+   have been paid for. */
+export function Engine({ paymentsLive = false }: { paymentsLive?: boolean }) {
+  /* null is "no order in progress". `seq` is what makes a second press a new
+     form with a new idempotency key rather than the open one with a changed
+     number -- a different press is a different attempt. */
+  const [order, setOrder] = useState<{ n: number; seq: number } | null>(null);
+  const seq = useRef(0);
+
+  const onPurchase = useCallback((n: number) => {
+    seq.current += 1;
+    setOrder({ n, seq: seq.current });
   }, []);
 
-  return null;
+  /* Stable, because the modal reads it from a keydown listener it registers
+     once and never re-registers. */
+  const close = useCallback(() => setOrder(null), []);
+
+  useEffect(() => {
+    if (!paymentsLive) {
+      startEngine({ onReady: startFeed });
+      return;
+    }
+
+    startEngine({
+      onPurchase,
+      onReady: (engine) => {
+        startFeed(engine);
+        startReturn(engine);
+      },
+    });
+
+    /* After the boot, not before: seed() writes this element's text itself when
+       the link carries ?n=, and that warning outranks this one. */
+    showLiveNote();
+  }, [paymentsLive, onPurchase]);
+
+  return order ? <OrderModal key={order.seq} floors={order.n} onClose={close} /> : null;
 }

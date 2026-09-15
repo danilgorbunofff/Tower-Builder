@@ -88,6 +88,37 @@ const ENV = {
     "orbit.r0": { abs: 0.6 },
     "orbit.r1": { abs: 1.4 },
   },
+  /* `blankStepsWorst` counts the INITIAL scroll samples taken before the lowest
+     prop (rung 0, art-unit y=260) has crossed the sky's bottom edge. Rung 0 sits
+     just BELOW that edge at rest, so it enters only as the page scrolls, and the
+     reading is "how many samples until it is in", out of 140.
+
+     The original reads 25 / 0.17 here and the port reads 26 / 0.18, and neither
+     is a wandering number: nine consecutive runs of the original gave 25 / 0.17
+     every time and three runs of the port gave 26 / 0.18 every time, while
+     `atRest` ranged over 20575ms-25245ms across those twelve runs. That ~4.7s
+     spread is well past the 7s `.lev-bob` sweep's own 1s dwell -- rung 0 wears
+     `7s steps(7,end) infinite alternate` over ±3 art units -- so "which dwell
+     the sample happened to land in" does not account for the split.
+
+     `tools/props-frozen.js` is what pins it down: `tools/props.js` with those
+     four levitation animations switched off and nothing else changed. Under it
+     BOTH pages read 26 / 0.18, and the two payloads agree on every single field
+     -- all 18 checks, all six lanes, all six firstSeen and all six firstMid. So
+     the port draws the same props in the same places, and the difference is that
+     freezing the bob walks the original across one sampling boundary while the
+     port stays where it already sat: the two pages are separated by less than
+     one sample of screen offset, and the bob is what carries the original over.
+     That capture is archived as `props-frozen-desktop.txt` beside this baseline
+     and carries no tolerance at all, so it is diffed like any other file and
+     would go red on the smallest change to what gets drawn.
+
+     The bound is one bucket. blankAtFrac is not an independent check either way:
+     25/140 and 26/140 are 0.17 and 0.18, so it moves with blankStepsWorst and
+     passes on the generic 0.02 rounding rule below rather than by agreement. */
+  "props-desktop.txt": {
+    "blankStepsWorst": { abs: 1.5 },
+  },
 };
 
 const NUM = /-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/g;

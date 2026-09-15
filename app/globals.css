@@ -905,3 +905,290 @@ button{ font:inherit; color:inherit; }
 @font-face{font-family:'Press Start 2P';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/press-start-2p-latin-400-normal.woff2) format('woff2');}
 @font-face{font-family:'Silkscreen';font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/silkscreen-latin-400-normal.woff2) format('woff2');}
 @font-face{font-family:'Silkscreen';font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/silkscreen-latin-700-normal.woff2) format('woff2');}
+
+/* ─────────────────────────────  order form  ─────────────────────────────
+   The one thing on this page that is not part of the tower: the form that
+   stands between the button and the till.
+
+   It is fixed to the viewport rather than to #stage, and it sits outside that
+   element in the document, so nothing it does is subject to the stage's own
+   overflow. It draws its own backdrop as well, because the tower underneath is
+   full of small bright things that read as live controls.
+
+   Every edge in here is built the way the sign and the button build theirs --
+   rings of box-shadow on the 4px grid -- so the form looks like something that
+   was already in the building rather than a system dialog dropped on top.
+
+   The linter flags .om-pay below the same way it flags the five in the verbatim
+   region: "a thick colored border on one side of a card". It is the same bevel
+   .order carries, deliberately -- the two buttons are the same decision -- and
+   not a card. It stays. */
+.om{
+  position:fixed; inset:0;
+  z-index:40;                    /* nothing in the verbatim region exceeds 4 */
+  display:flex;
+  padding:20px;
+  background:rgba(4,3,9,.84);
+  overflow:auto;
+  overscroll-behavior:contain;
+  animation:om-in 120ms steps(3,end);
+}
+
+.om-panel{
+  /* margin:auto centres it while there is room and stops the top of the panel
+     being cut off once there is not -- align-items:center cannot do both. */
+  margin:auto;
+  position:relative;
+  width:min(440px, 100%);
+  padding:22px 22px 20px;
+  background:var(--tray-2);
+  color:var(--text);
+  box-shadow:
+    0 0 0 4px var(--tray-3),
+    0 0 0 8px var(--tray),
+    0 12px 0 8px rgba(0,0,0,.5),
+    inset 0 4px 0 rgba(255,255,255,.08);
+}
+
+@keyframes om-in{
+  from{ opacity:0; translate:0 8px; }
+  to  { opacity:1; translate:0 0;   }
+}
+
+.om-kicker{
+  font-size:8px;
+  letter-spacing:1px;
+  color:var(--muted);
+}
+.om-title{
+  margin-top:9px;
+  font-family:'Press Start 2P','Courier New',monospace;
+  font-size:16px;
+  font-weight:400;
+  line-height:1.4;
+  color:var(--gold);
+}
+.om-sub{
+  margin-top:10px;
+  font-size:9px;
+  line-height:1.7;
+  color:var(--muted);
+}
+
+.om-x{
+  position:absolute;
+  top:14px; right:14px;
+  width:32px; height:32px;
+  display:grid; place-items:center;
+  border:0; padding:0;
+  background:var(--tray-3);
+  color:var(--muted);
+  cursor:pointer;
+  box-shadow:
+    inset 0  4px 0 rgba(255,255,255,.06),
+    inset 0 -4px 0 rgba(0,0,0,.6);
+}
+.om-x:hover{ color:var(--white); }
+.om-x svg{ display:block; width:12px; height:12px; }
+
+/* ── how many ─────────────────────────────────────────────────────────────
+   The number the gesture asked for, and a way to change it by hand. Both
+   directions are clamped to the same MAX_BATCH the server enforces, so the
+   steppers can never walk someone into an order the till refuses. */
+.om-count{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:16px;
+  margin-top:22px;
+}
+.om-step{
+  width:44px; height:44px;
+  flex:0 0 auto;
+  display:grid; place-items:center;
+  border:0; padding:0;
+  background:var(--tray);
+  color:var(--text);
+  font-family:'Press Start 2P','Courier New',monospace;
+  font-size:14px;
+  line-height:1;
+  cursor:pointer;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  box-shadow:
+    inset  4px 0 0 rgba(255,255,255,.07),
+    inset  0  4px 0 rgba(255,255,255,.07),
+    inset  0 -8px 0 rgba(0,0,0,.45),
+    0 0 0 4px var(--tray-3),
+    0 4px 0 4px rgba(0,0,0,.4);
+  transition:translate 70ms steps(2,end), box-shadow 70ms steps(2,end);
+}
+.om-step:not(:disabled):active{
+  translate:0 4px;
+  box-shadow:
+    inset  4px 0 0 rgba(255,255,255,.07),
+    inset  0  4px 0 rgba(255,255,255,.07),
+    inset 0 -8px 0 rgba(0,0,0,.45),
+    0 0 0 4px var(--tray-3),
+    0 0 0 4px rgba(0,0,0,.4);
+}
+.om-step:disabled{ opacity:.35; cursor:default; }
+.om-count-n{
+  flex:1 1 auto;
+  min-width:0;
+  text-align:center;
+  font-size:9px;
+  letter-spacing:1px;
+  color:var(--muted);
+}
+.om-count-n b{
+  display:block;
+  margin-bottom:4px;
+  font-family:'Press Start 2P','Courier New',monospace;
+  font-size:26px;
+  font-weight:400;
+  line-height:1;
+  color:var(--white);
+  font-variant-numeric:tabular-nums;
+}
+
+/* ── what it says, where it goes ─────────────────────────────────────────── */
+.om-field{ margin-top:14px; }
+.om-label{
+  display:block;
+  margin-bottom:7px;
+  font-size:8px;
+  letter-spacing:1px;
+  color:var(--muted);
+}
+.om-opt{ opacity:.55; }
+.om-input{
+  width:100%;
+  height:44px;
+  border:0;
+  padding:0 12px;
+  background:var(--tray-3);
+  color:var(--white);
+  font-family:'Silkscreen','Courier New',monospace;
+  font-size:11px;
+  caret-color:var(--gold);
+  box-shadow:
+    inset 0 0 0 4px var(--edge),
+    inset 0 4px 0 rgba(0,0,0,.5);
+}
+.om-input::placeholder{ color:var(--muted); opacity:.45; }
+.om-input:disabled{ opacity:.55; }
+.om-field.is-bad .om-input{
+  box-shadow:
+    inset 0 0 0 4px #8a2b30,
+    inset 0 4px 0 rgba(0,0,0,.5);
+}
+.om-bad{
+  margin-top:7px;
+  font-size:9px;
+  line-height:1.6;
+  color:#ff6b6b;
+}
+.om-bad-form{
+  margin-top:16px;
+  padding:12px;
+  background:var(--tray-3);
+  box-shadow:inset 0 0 0 4px #4a1b1f;
+}
+
+.om-total{
+  margin-top:20px;
+  padding-top:15px;
+  border-top:4px solid var(--edge);
+  font-size:8px;
+  letter-spacing:1px;
+  color:var(--muted);
+}
+.om-total b{
+  margin-left:4px;
+  font-family:'Press Start 2P','Courier New',monospace;
+  font-size:14px;
+  font-weight:400;
+  color:var(--good);
+}
+
+/* The button is the same object as #order -- same bevel, same 8px of travel --
+   because it is the same decision, one step later. */
+.om-pay{
+  display:block;
+  width:100%;
+  height:60px;
+  margin-top:14px;
+  border:0; padding:0;
+  background:var(--gold);
+  color:var(--tray-3);
+  font-family:'Press Start 2P','Courier New',monospace;
+  font-size:15px;
+  line-height:1;
+  cursor:pointer;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+  touch-action:manipulation;
+  box-shadow:
+    inset  4px 0 0 var(--gold-hi),
+    inset -4px 0 0 var(--gold-lo),
+    inset 0  4px 0 var(--gold-hi),
+    inset 0 -8px 0 var(--gold-lo),
+    0 0 0 4px var(--tray-3),
+    0 8px 0 4px var(--gold-deep),
+    0 12px 0 4px rgba(0,0,0,.4);
+  transition:translate 70ms steps(2,end), box-shadow 70ms steps(2,end);
+}
+.om-pay:hover:not(:disabled){ background:var(--gold-hi); }
+.om-pay:not(:disabled):active{
+  translate:0 8px;
+  box-shadow:
+    inset  4px 0 0 var(--gold-hi),
+    inset -4px 0 0 var(--gold-lo),
+    inset 0  4px 0 var(--gold-hi),
+    inset 0 -8px 0 var(--gold-lo),
+    0 0 0 4px var(--tray-3),
+    0 0 0 4px var(--gold-deep),
+    0 4px 0 4px rgba(0,0,0,.4);
+}
+/* Sitting still while the till is being opened, so it is not a thing to press
+   twice. Darkened rather than faded: the label has to stay readable. */
+.om-pay:disabled{
+  background:var(--gold-lo);
+  color:rgba(8,6,15,.72);
+  cursor:default;
+}
+
+.om-fine{
+  margin-top:16px;
+  font-size:8px;
+  line-height:1.7;
+  letter-spacing:.5px;
+  color:var(--muted);
+  opacity:.8;
+}
+
+/* A phone in portrait gives the panel the whole width, and the title is the
+   widest thing in it. */
+@media (max-width:479px){
+  .om{ padding:12px; }
+  .om-panel{ padding:18px 16px 16px; }
+  .om-title{ font-size:13px; }
+  .om-count-n b{ font-size:22px; }
+  .om-pay{ height:56px; font-size:13px; }
+}
+
+/* A short window scrolls the panel, but the button that spends money is then
+   below the fold, so the fields give back their breathing room first. */
+@media (max-height:700px){
+  .om-count{ margin-top:14px; }
+  .om-field{ margin-top:10px; }
+  .om-total{ margin-top:14px; padding-top:11px; }
+}
+
+@media (prefers-reduced-motion:reduce){
+  .om{ animation:none; }
+  .om-step,
+  .om-pay{ transition:none; }
+}

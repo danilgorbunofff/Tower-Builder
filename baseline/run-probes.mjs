@@ -51,6 +51,10 @@ const PLAN = {
   "roundtrip":    { q: "?n=120",             vps: ["desktop", "mobile"] },
   "smoke":        { q: "?n=120",             vps: ["desktop"] },
   "props":        { q: "?n=120",             vps: ["desktop"] },
+  /* the same contract with the levitation off: tools/props.js includes the CSS
+     motion, so its blankStepsWorst depends on the second the page booted in.
+     This one does not, which is what makes it evidence about the drawing. */
+  "props-frozen": { q: "?n=120",             vps: ["desktop"] },
   "lanes":        { q: "?n=120",             vps: ["desktop"] },
   "space":        { q: "?n=400",             vps: ["desktop"] },
 };

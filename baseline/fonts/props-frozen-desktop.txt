@@ -1,0 +1,153 @@
+SETTLE desktop atRest=21977 waited=1000ms built=true running=0
+EVAL desktop {
+ "frame": {
+  "w": 1440,
+  "h": 880.95,
+  "k": 4.08,
+  "window": 216,
+  "bandUnits": 353.07
+ },
+ "ladder": {
+  "first": 260,
+  "step": 216,
+  "rungs": 6,
+  "yMax": 1340,
+  "uMax": 1383.11,
+  "roomAboveTheCeiling": 43.11
+ },
+ "shot": {
+  "drawn": 14,
+  "placed": 6,
+  "seen": 6,
+  "centred": 6
+ },
+ "frozen": true,
+ "blankStepsWorst": 26,
+ "blankAtFrac": 0.18,
+ "seenAtEnd": 1,
+ "firstSeen": [
+  {
+   "rung": 0,
+   "y": 260,
+   "at": 0.19
+  },
+  {
+   "rung": 1,
+   "y": 476,
+   "at": 0.34
+  },
+  {
+   "rung": 2,
+   "y": 692,
+   "at": 0.5
+  },
+  {
+   "rung": 3,
+   "y": 908,
+   "at": 0.66
+  },
+  {
+   "rung": 4,
+   "y": 1124,
+   "at": 0.81
+  },
+  {
+   "rung": 5,
+   "y": 1340,
+   "at": 0.97
+  }
+ ],
+ "firstMid": [
+  {
+   "rung": 0,
+   "at": 0.21
+  },
+  {
+   "rung": 1,
+   "at": 0.36
+  },
+  {
+   "rung": 2,
+   "at": 0.52
+  },
+  {
+   "rung": 3,
+   "at": 0.68
+  },
+  {
+   "rung": 4,
+   "at": 0.84
+  },
+  {
+   "rung": 5,
+   "at": 0.99
+  }
+ ],
+ "lanes": [
+  {
+   "rung": 0,
+   "y": 260,
+   "x": 144,
+   "wide": 12
+  },
+  {
+   "rung": 1,
+   "y": 476,
+   "x": 226,
+   "wide": 10
+  },
+  {
+   "rung": 2,
+   "y": 692,
+   "x": 116,
+   "wide": 16
+  },
+  {
+   "rung": 3,
+   "y": 908,
+   "x": 220,
+   "wide": 14
+  },
+  {
+   "rung": 4,
+   "y": 1124,
+   "x": 124,
+   "wide": 13
+  },
+  {
+   "rung": 5,
+   "y": 1340,
+   "x": 220,
+   "wide": 20
+  }
+ ],
+ "cropped": [],
+ "croppedCount": 0,
+ "behind": [],
+ "behindCount": 0,
+ "crowded": [],
+ "steps": 140,
+ "checks": {
+  "skyHasRoom": true,
+  "shapesAreFourteen": true,
+  "clonesRepeatTheShapes": true,
+  "ladderStartsAtTheFrame": true,
+  "ladderIsStepped": true,
+  "ladderReachesTheCeiling": true,
+  "everyRungPlaced": true,
+  "mirroredY": true,
+  "onTheGrid": true,
+  "withinTheWidthLaw": true,
+  "streetIsClear": true,
+  "allRungsSeen": true,
+  "everyRungCentred": true,
+  "theEscalationIsCentred": true,
+  "nothingCropped": true,
+  "clearOfTheColumn": true,
+  "onePropAtATime": true,
+  "topIsAlive": true
+ },
+ "pass": true
+}
+EVAL-ERR null
+STAGES desktop launch=1519 setup=1913 load-timeout=7968 fonts-timeout=9570 settle=24756 probe=42238 done=42239
